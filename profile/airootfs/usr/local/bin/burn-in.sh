@@ -2,6 +2,7 @@
 # BurnBench automated burn-in and benchmark suite.
 # Designed to be launched from the "BurnBench Burn-In" desktop icon on the
 # live ISO. Coworkers double-click, walk away, and hear the tone when done.
+# Every stage prints live progress so it never looks like a hang.
 set -o pipefail
 umask 022
 
@@ -43,11 +44,37 @@ run_logged() {     # run a command, capture stdout+stderr to the log
     "$@" >>"$LOG" 2>&1
 }
 
+# --------------------------------------------------- progress UI helpers ---
+clr() {            # wipe the current line
+    printf '\r%*s\r' "${CLR_COLS:-110}" ''
+}
+
+spin_start() {     # spin_start <text>   (indeterminate spinner)
+    local t="$1" sp='|/-\' i=0
+    while :; do
+        printf '\r    [%c] %s' "${sp:i%4:1}" "$t"
+        i=$((i + 1))
+        sleep 0.25
+    done &
+    SPIN_PID=$!
+}
+
+spin_stop() {      # spin_stop
+    kill "${SPIN_PID:-0}" 2>/dev/null
+    wait "${SPIN_PID:-0}" 2>/dev/null
+    clr
+}
+
+fmt_mmss() {       # seconds -> MM:SS
+    printf '%02d:%02d' $(($1 / 60)) $(($1 % 60))
+}
+
 # ---------------------------------------------------------------- header ---
 {
 echo "==============================================================="
 echo " BurnBench automated burn-in   $(date '+%Y-%m-%d %H:%M:%S')"
 echo " Host: $HOSTNAME"
+echo " You can walk away - a chime plays when everything is done."
 echo "==============================================================="
 } | tee "$LOG"
 
@@ -79,7 +106,9 @@ if [ "${SET_PERFORMANCE_GOVERNOR:-1}" = "1" ]; then
             continue
         fi
         echo performance > "$gov_file" 2>>"$LOG" && ok_gov=$((ok_gov + 1))
+        printf '\r    setting policy %-12s (%d/%d)' "$(basename "${cpu_dir%%/cpufreq}")" "$ok_gov" "$set_gov"
     done
+    clr
     if [ "$set_gov" -eq 0 ]; then
         stage "governor" "WARN" "no cpufreq policy exposed (some VMs/embedded); running at defaults"
     elif [ "$ok_gov" -eq "$set_gov" ]; then
@@ -94,7 +123,7 @@ fi
 
 # ----------------------------------------------------------------- wifi ---
 if [ "${WIFI_CONNECT:-1}" = "1" ]; then
-    section "Stage 2: WiFi"
+    section "Stage 2: Network (WiFi + internet check)"
     WL_IFACES=""
     for iface_path in /sys/class/net/*; do
         [ -d "$iface_path/wireless" ] && WL_IFACES="${WL_IFACES}$(basename "$iface_path") "
@@ -107,32 +136,58 @@ if [ "${WIFI_CONNECT:-1}" = "1" ]; then
         run_logged nmcli radio wifi on
         BAKED_SSID=$(sed -n 's/^ssid=//p' \
             /etc/NetworkManager/system-connections/burnbench-wifi.nmconnection 2>/dev/null | head -1)
-        log "available networks right now:"
-        nmcli -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan yes 2>>"$LOG" \
+
+        spin_start "scanning for networks..."
+        nmcli device wifi list --rescan yes >>"$LOG" 2>&1
+        sleep 3
+        spin_stop
+        nmcli -f IN-USE,SSID,SIGNAL,SECURITY device wifi list 2>>"$LOG" \
             | sed 's/^/    scan| /' | tee -a "$LOG" >/dev/null
 
-        deadline=$((SECONDS + WIFI_TIMEOUT_SECS))
+        MAX_ATTEMPTS=$((WIFI_TIMEOUT_SECS / 5))
+        attempt=0
         until nmcli -t -f GENERAL.STATE connection show burnbench-wifi 2>/dev/null | grep -q activated; do
+            attempt=$((attempt + 1))
+            printf '\r    connecting to "%s"... attempt %d/%d   ' "${BAKED_SSID:-?}" "$attempt" "$MAX_ATTEMPTS"
             nmcli connection up burnbench-wifi --nowait >>"$LOG" 2>&1
+            [ "$attempt" -ge "$MAX_ATTEMPTS" ] && break
             sleep 5
-            [ $SECONDS -ge "$deadline" ] && break
         done
+        clr
+
         if nmcli -t -f GENERAL.STATE connection show burnbench-wifi 2>/dev/null | grep -q activated; then
             ACT_IFACE="$(nmcli -g GENERAL.DEVICES connection show burnbench-wifi 2>/dev/null)"
             IP_ADDR="$(ip -4 -o addr show dev "$ACT_IFACE" 2>/dev/null | awk '{split($4,a,"/"); print a[1]; exit}')"
             SIGNAL="$(nmcli -t -f ACTIVE,SIGNAL dev wifi list 2>/dev/null | head -1)"
             stage "wifi" "PASS" "connected to '${BAKED_SSID:-burnbench-wifi}' via $ACT_IFACE ip=$IP_ADDR signal=${SIGNAL:-?}%"
-
         else
             stage "wifi" "FAIL" "could not associate with '${BAKED_SSID:-burnbench-wifi}' within ${WIFI_TIMEOUT_SECS}s (see log)"
         fi
     fi
+
+    # ---- internet reachability: 5 pings (~5 seconds) ----
+    log "pinging google.com x5 (~5s)..."
+    PING_IP="$(getent ahostsv4 google.com 2>/dev/null | awk '{print $1; exit}')"
+    if [ -z "$PING_IP" ]; then
+        stage "ping" "FAIL" "DNS lookup for google.com failed - no usable internet route"
+    else
+        POUT="$(ping -c 5 -W 2 google.com 2>&1)"
+        PRC=$?
+        LOSS="$(grep -oE '[0-9]+(\.[0-9]+)?% packet loss' <<<"$POUT" | grep -oE '^[0-9.]*%')"
+        AVG="$(awk -F'/' '/^rtt|^round-trip/{print $5}' <<<"$POUT")"
+        clr
+        if [ "$PRC" -eq 0 ]; then
+            stage "ping" "PASS" "google.com ($PING_IP): loss=${LOSS:-0%} avg=${AVG:-?}ms"
+        else
+            stage "ping" "FAIL" "google.com ($PING_IP): loss=${LOSS:-100%} - offline or ICMP blocked"
+        fi
+    fi
 else
     stage "wifi" "SKIP" "disabled in config"
+    stage "ping" "SKIP" "disabled in config"
 fi
 
 # --------------------------------------------------------------- camera ---
-CAM_PIDS=""
 if [ "${CAMERA_CHECK:-1}" = "1" ]; then
     section "Stage 3: Camera"
     CAM_DEVS=""
@@ -149,6 +204,7 @@ if [ "${CAMERA_CHECK:-1}" = "1" ]; then
         run_logged v4l2-ctl --list-devices
         export DISPLAY="${DISPLAY:-:0.0}"
         CAM_PID=""
+        spin_start "launching camera viewer..."
         if command -v guvcview >/dev/null 2>&1; then
             setsid nohup guvcview </dev/null >>"$LOG" 2>&1 &
             CAM_PID=$!
@@ -156,13 +212,14 @@ if [ "${CAMERA_CHECK:-1}" = "1" ]; then
             setsid nohup cheese </dev/null >>"$LOG" 2>&1 &
             CAM_PID=$!
         else
+            spin_stop
             stage "camera" "WARN" "devices found ($CAM_DEVS) but no viewer installed in image"
         fi
         if [ -n "$CAM_PID" ]; then
-            CAM_PIDS="$CAM_PIDS $CAM_PID"
-            sleep 3
+            sleep 4
+            spin_stop
             if kill -0 "$CAM_PID" 2>/dev/null; then
-                stage "camera" "PASS" "viewer started for:$CAM_DEVS (pid $CAM_PID)"
+                stage "camera" "PASS" "viewer started for:$CAM_DEVS (pid $CAM_PID) - window left open on desktop"
             else
                 stage "camera" "WARN" "devices found ($CAM_DEVS) but viewer exited early; see log"
             fi
@@ -173,7 +230,7 @@ else
 fi
 
 # ------------------------------------------------------------ systester ---
-section "Stage 4: systester-cli (CPU/RAM stability)"
+section "Stage 4: systester-cli (CPU/RAM stability, $SYSTESTER_TURNS turn(s))"
 command -v systester-cli >/dev/null 2>&1 || stage "systester" "FAIL" "binary missing from image"
 
 if [ -z "${RESULTS[systester]:-}" ]; then
@@ -187,23 +244,35 @@ if [ -z "${RESULTS[systester]:-}" ]; then
         THREADS="$MEM_CAP_THREADS"
     fi
     [ "$THREADS" -lt 1 ] && THREADS=1
-    TURNS=1000000   # effectively unbounded; timeout below enforces wall clock
+
     SYST_DIR="$LOG_DIR/$STAMP/systester"
     mkdir -p "$SYST_DIR"
-    log "running: systester-cli -gausslg $SYSTESTER_DIGITS -threads $THREADS -turns $TURNS (limit ${SYSTESTER_MINUTES} min)"
+    log "running: systester-cli -gausslg $SYSTESTER_DIGITS -threads $THREADS -turns $SYSTESTER_TURNS"
+    log "(live progress below; safety cap ${SYSTESTER_MAX_MINUTES} min)"
+
     (
         cd "$SYST_DIR" &&
-        timeout -k 30 "${SYSTESTER_MINUTES}m" \
-            systester-cli -gausslg "$SYSTESTER_DIGITS" -threads "$THREADS" -turns "$TURNS" -test -log
-    ) >>"$LOG" 2>&1
+        timeout -k 30 "${SYSTESTER_MAX_MINUTES}m" \
+            systester-cli -gausslg "$SYSTESTER_DIGITS" -threads "$THREADS" -turns "$SYSTESTER_TURNS" -test -log
+    ) >>"$LOG" 2>&1 &
+    SYST_PID=$!
+    SYST_START=$SECONDS
+    while kill -0 "$SYST_PID" 2>/dev/null; do
+        sleep 5
+        EL=$((SECONDS - SYST_START))
+        printf '\r    [systester] crunching pi (%s digits, %d threads)... %s elapsed / cap %dmin   ' \
+            "$SYSTESTER_DIGITS" "$THREADS" "$(fmt_mmss "$EL")" "$SYSTESTER_MAX_MINUTES"
+    done
+    wait "$SYST_PID"
     rc=$?
-    if [ "$rc" -eq 124 ] || [ "$rc" -eq 0 ]; then
-        [ "$rc" -eq 0 ] \
-            && stage "systester" "PASS" "completed all turns cleanly ($THREADS threads)" \
-            || stage "systester" "PASS" "ran full ${SYSTESTER_MINUTES}min with $THREADS threads, no crash"
+    clr
+    if [ "$rc" -eq 0 ]; then
+        stage "systester" "PASS" "completed $SYSTESTER_TURNS turn(s) at $SYSTESTER_DIGITS digits with $THREADS threads in $(fmt_mmss $((SECONDS - SYST_START))) - no errors"
         tail -n 15 "$SYST_DIR/systester.log" >>"$LOG" 2>/dev/null || true
+    elif [ "$rc" -eq 124 ]; then
+        stage "systester" "FAIL" "hit the ${SYSTESTER_MAX_MINUTES}min safety cap mid-turn (machine too slow or hung?)"
     else
-        stage "systester" "FAIL" "exited rc=$rc after $((SECONDS))s of ${SYSTESTER_MINUTES}min (crash/OOM? see log)"
+        stage "systester" "FAIL" "exited rc=$rc after $(fmt_mmss $((SECONDS - SYST_START))) (crash/OOM? see log)"
     fi
 fi
 
@@ -215,16 +284,19 @@ if ! command -v gst >/dev/null 2>&1; then
 elif ! command -v stress-ng >/dev/null 2>&1; then
     stage "gst" "FAIL" "stress-ng missing from image"
 else
+    spin_start "opening GST monitoring window..."
     setsid nohup gst </dev/null >>"$LOG" 2>&1 &
     GST_PID=$!
     sleep 6
-    kill -0 "$GST_PID" 2>/dev/null && log "GST GUI open (pid $GST_PID), monitoring while stress-ng runs"
+    spin_stop
+    kill -0 "$GST_PID" 2>/dev/null && log "GST GUI open (pid $GST_PID); window stays up so you can review temps later"
 
     # Exact mirror of GST's default selection ("CPU: All methods",
     # Workers=Auto): see gst/interactor/get_stressors_interactor.py and
     # gst/repository/stress_ng_repository.py upstream.
     TMPDIR_GST="$(mktemp -d /tmp/gst-stress.XXXXXX)"
-    timeout -s INT $((GST_SECONDS + 45)) \
+    log "stress-ng: --cpu $NPROC --cpu-method all --verify --timeout ${GST_SECONDS}s"
+    timeout -k 30 $((GST_SECONDS + 45)) \
         stress-ng \
             --yaml "$TMPDIR_GST/report.yaml" \
             --metrics --times --no-rand-seed \
@@ -232,8 +304,19 @@ else
             --timeout "${GST_SECONDS}s" \
             --verify \
             --cpu "$NPROC" --cpu-method all \
-            >>"$LOG" 2>&1
+            >>"$LOG" 2>&1 &
+    SNG_PID=$!
+    SNG_START=$SECONDS
+    while kill -0 "$SNG_PID" 2>/dev/null; do
+        sleep 5
+        REM=$((GST_SECONDS - (SECONDS - SNG_START)))
+        [ "$REM" -lt 0 ] && REM=0
+        printf '\r    [gst/stress-ng] stressing all %d cores... ~%ds remaining of %ds   ' \
+            "$NPROC" "$REM" "$GST_SECONDS"
+    done
+    wait "$SNG_PID"
     rc=$?
+    clr
     BOGO="$(awk '/bogo-ops:/ {sum += $NF} END {printf "%.0f", sum}' "$TMPDIR_GST/report.yaml" 2>/dev/null)"
     ELAPSED="$(awk '/wall-clock-time:/ {sum += $NF} END {printf "%.0f", sum}' "$TMPDIR_GST/report.yaml" 2>/dev/null)"
     cp "$TMPDIR_GST/report.yaml" "$LOG_DIR/$STAMP/stress-ng-report.yaml" 2>/dev/null || true
@@ -243,7 +326,6 @@ else
     else
         stage "gst" "FAIL" "rc=$rc elapsed=${ELAPSED:-0}s bogo-ops=${BOGO:-?} (see log)"
     fi
-    # Leave the GST window open so whoever returns can inspect temps/graphs.
 fi
 
 # ------------------------------------------------------------ summary ----
@@ -282,8 +364,9 @@ notify_send_done() {
 # ------------------------------------------------------------ the tone ---
 if [ "${PLAY_TONE:-1}" = "1" ]; then
     notify_send_done
+    log "playing result tone..."
     if [ "$VERDICT" != "PASS" ]; then
-        # three short low beeps signal failure audibly
+        # three short chimes signal failure audibly
         paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1
         sleep 0.4; paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1; sleep 0.4
         paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1

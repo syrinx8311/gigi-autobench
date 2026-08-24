@@ -195,9 +195,10 @@ build_iso() {
         && die "wifi template not rendered"
 
     log "running mkarchiso (this downloads ~1GB of packages on first run)"
-    # Force a fresh build: mkarchiso caches steps via _run_once marker files
-    # in the work dir. Delete the markers but keep the pacman package cache.
-    find "$WORK/build" -maxdepth 1 -type f -name '*.*' -delete 2>/dev/null || true
+    # Start from a clean slate every build: mkarchiso caches steps via
+    # _run_once markers AND overlays profile/airootfs onto a persistent
+    # chroot - without this, removed packages/files linger in the ISO.
+    rm -rf "$WORK/build"
     mkarchiso -v -w "$WORK/build" -o "$OUT" "$STAGING"
     log "done. ISO(s):"
     ls -lh "$OUT"/*.iso

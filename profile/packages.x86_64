@@ -44,8 +44,7 @@ xfce4-terminal
 xfce4-power-manager
 xfce4-notifyd
 gvfs
-lightdm
-lightdm-gtk-greeter
+xorg-xinit
 
 # --- audio (PipeWire stack; paplay comes with libpulse) ---
 pipewire

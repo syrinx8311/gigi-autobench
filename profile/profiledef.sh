@@ -16,7 +16,6 @@ airootfs_image_tool_options=('-comp' 'xz' '-Xbcj' 'x86' '-b' '1M' '-Xdict-size' 
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/root"]="0:0:750"
-  ["/etc/lightdm/lightdm.conf.d/10-burnbench-autologin.conf"]="0:0:644"
   ["/etc/NetworkManager/system-connections"]="0:0:700"
   ["/etc/NetworkManager/system-connections/burnbench-wifi.nmconnection"]="0:0:600"
   ["/usr/local/bin/burn-in.sh"]="0:0:755"

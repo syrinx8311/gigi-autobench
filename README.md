@@ -11,10 +11,12 @@ A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 |---|-------|-----------|
 | 0 | Hardware summary | CPU/RAM/board/BIOS logged, sensors snapshot |
 | 1 | CPU governor | Sets every cpufreq policy to `performance` (WARNs where unsupported) |
-| 2 | WiFi | If a wireless card exists: unblocks rfkill, scans + logs visible networks, connects to the SSID baked into the ISO |
+| 2 | Network | If a wireless card exists: scans + logs visible networks and connects to the SSID baked into the ISO. Then pings google.com 5 times (~5s) and reports resolved IP / packet loss / avg latency as its own PASS/FAIL line |
 | 3 | Camera | If a capture device exists: launches a viewer window (guvcview) so a human can eyeball it later |
-| 4 | systester-cli | Pi-calculation stability test. Auto-sizes threads = min(cores, 64, RAM budget). Runs for `SYSTESTER_MINUTES` (default 15) at `-gausslg 1M`, wrapped in a hard timeout so slow/fast machines both get the full burn |
-| 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`) |
+| 4 | systester-cli | Pi-calculation stability test. **One full turn** at `-gausslg 1M`, auto-sized threads = min(cores, 64, RAM budget), with a live elapsed-time ticker. A safety cap (`SYSTESTER_MAX_MINUTES`, default 30) cuts off pathologically slow machines |
+| 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`), with a countdown |
+
+Every stage prints live progress (spinners, attempt counters, elapsed/remaining tickers) so the script never looks like it's hanging.
 | 6 | Tone + report | Success chime (`success.wav` via PipeWire; falls back to `speaker-test` sine), desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
 
 Every stage result is PASS/FAIL/SKIP/WARN; exit code is non-zero on any FAIL,
@@ -56,8 +58,7 @@ Write it to a USB stick:
 sudo dd if=out/burnbench-*.iso of=/dev/sdX bs=4M conv=fsync oflag=direct status=progress
 ```
 
-Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. The machine
-auto-logs-in as root into XFCE.
+Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. There is no login screen: tty1 auto-logs-in as root and drops straight into XFCE (if X ever fails to start, check `/root/.xsession.log`; you'll be at a root shell).
 
 ## Tuning knobs
 
@@ -66,7 +67,8 @@ Live-tunable in `/usr/local/share/burnbench/burnbench.conf`
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `SYSTESTER_MINUTES` | 15 | wall-clock length of the systester stage |
+| `SYSTESTER_TURNS` | 1 | number of full pi-computation turns systester runs |
+| `SYSTESTER_MAX_MINUTES` | 30 | wall-clock safety cap for the systester stage |
 | `SYSTESTER_DIGITS` | 1M | Gauss-Legendre precision per turn |
 | `SYSTESTER_PER_THREAD_MB` | 64 | RAM budget per worker used by the auto-sizer |
 | `GST_SECONDS` | 60 | stress-ng/GTK phase duration |
