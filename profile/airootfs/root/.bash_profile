@@ -1,4 +1,4 @@
-# BurnBench: the autologin on tty1 lands here - go straight into XFCE.
-if [[ -z "$DISPLAY" ]]; then
-    exec startxfce4 >/root/.xsession.log 2>&1
+# BurnBench: the autologin on tty1 lands here - go straight into Hyprland.
+if [[ -z "$WAYLAND_DISPLAY" && -z "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
+    exec Hyprland >/root/.hyprland-session.log 2>&1
 fi

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-iso_name="burnbench"
+iso_name="burnbench-hypr"
 iso_label="BURNBENCH_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m%d)"
 iso_publisher="BurnBench <https://example.invalid>"
-iso_application="BurnBench Live / Hardware Burn-in and Benchmark"
+iso_application="BurnBench Live / Hardware Burn-in and Benchmark (Hyprland)"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="burnbench"
 buildmodes=('iso')

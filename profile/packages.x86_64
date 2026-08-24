@@ -26,25 +26,17 @@ wpa_supplicant
 iw
 usbutils
 
-# --- desktop: X11 + XFCE ---
-xorg-server
-mesa
-xf86-video-amdgpu
-xf86-video-vesa
-xfce4-panel
-xfwm4
-xfdesktop
-xfce4-session
-xfce4-settings
-xfce4-appfinder
-thunar
-thunar-volman
-tumbler
-xfce4-terminal
-xfce4-power-manager
-xfce4-notifyd
-gvfs
-xorg-xinit
+# --- desktop: Hyprland (Wayland tiling compositor) ---
+hyprland
+kitty
+swaybg
+mako
+libnotify
+polkit
+xdg-desktop-portal-gtk
+vulkan-intel
+vulkan-radeon
+pavucontrol
 
 # --- audio (PipeWire stack; paplay comes with libpulse) ---
 pipewire
@@ -83,4 +75,3 @@ less
 htop
 mpg123
 fastfetch
-xfce4-pulseaudio-plugin
