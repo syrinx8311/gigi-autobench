@@ -1,0 +1,19 @@
+# Rendered by build.sh from config/wifi.conf (__WIFI_*__ markers replaced).
+[connection]
+id=burnbench-wifi
+type=wifi
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=__WIFI_SSID__
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=__WIFI_PSK__
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto

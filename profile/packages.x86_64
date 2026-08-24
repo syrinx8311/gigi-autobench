@@ -1,0 +1,84 @@
+#
+# BurnBench live ISO package list (x86_64)
+#
+
+# --- base system / boot ---
+base
+linux
+linux-firmware
+mkinitcpio
+mkinitcpio-archiso
+amd-ucode
+intel-ucode
+grub
+syslinux
+efibootmgr
+memtest86+
+memtest86+-efi
+
+# --- firmware for common laptop/desktop hardware ---
+sof-firmware
+wireless-regdb
+
+# --- networking (NetworkManager owns wifi; resolved does DNS) ---
+networkmanager
+wpa_supplicant
+iw
+usbutils
+
+# --- desktop: X11 + XFCE ---
+xorg-server
+mesa
+xf86-video-amdgpu
+xf86-video-vesa
+xfce4-panel
+xfwm4
+xfdesktop
+xfce4-session
+xfce4-settings
+xfce4-appfinder
+thunar
+thunar-volman
+tumbler
+xfce4-terminal
+xfce4-power-manager
+xfce4-notifyd
+gvfs
+lightdm
+lightdm-gtk-greeter
+
+# --- audio (PipeWire stack; paplay comes with libpulse) ---
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+libpulse
+alsa-utils
+
+# --- burn-in & benchmarking tools ---
+stress-ng
+gmp
+dmidecode
+lm_sensors
+hdparm
+smartmontools
+gsmartcontrol
+gnome-disk-utility
+bonnie++
+hardinfo
+memtester
+inxi
+lshw
+v4l-utils
+
+# --- camera viewer (lighter than cheese) ---
+guvcview
+
+# --- built from aur/ by build.sh into the local repo ---
+gst
+systester
+
+# --- misc QOL ---
+nano
+less
+htop

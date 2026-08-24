@@ -1,0 +1,92 @@
+# BurnBench
+
+An Arch-based live ISO in the spirit of PartedMagic, focused on **automated
+hardware burn-in and benchmarking** with quality-of-life improvements for
+shop-floor use: boot the USB stick, double-click one desktop icon, walk away.
+A tone plays and a PASS/FAIL report lands on the desktop when it's done.
+
+## What the automated run does (double-click `BurnBench Burn-In`)
+
+| # | Stage | Behaviour |
+|---|-------|-----------|
+| 0 | Hardware summary | CPU/RAM/board/BIOS logged, sensors snapshot |
+| 1 | CPU governor | Sets every cpufreq policy to `performance` (WARNs where unsupported) |
+| 2 | WiFi | If a wireless card exists: unblocks rfkill, scans + logs visible networks, connects to the SSID baked into the ISO |
+| 3 | Camera | If a capture device exists: launches a viewer window (guvcview) so a human can eyeball it later |
+| 4 | systester-cli | Pi-calculation stability test. Auto-sizes threads = min(cores, 64, RAM budget). Runs for `SYSTESTER_MINUTES` (default 15) at `-gausslg 1M`, wrapped in a hard timeout so slow/fast machines both get the full burn |
+| 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`) |
+| 6 | Tone + report | Success chime (`success.wav` via PipeWire; falls back to `speaker-test` sine), desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
+
+Every stage result is PASS/FAIL/SKIP/WARN; exit code is non-zero on any FAIL,
+and the full log lives in `/var/log/burnbench/<timestamp>/`.
+
+## Repository layout
+
+```
+build.sh              one-command build (wraps itself in docker if needed)
+config/wifi.conf.example  copy to config/wifi.conf, set your shop SSID/PSK
+aur/                  vendored PKGBUILDs (gst, systester cli-only build)
+profile/
+  profiledef.sh       archiso profile definition
+  packages.x86_64     package list
+  pacman.conf         official repos + local [burnbench] repo
+  grub/, syslinux/, efiboot/   boot menus (3s timeout, Memtest86+ entries)
+  airootfs/           everything that lands in the live root:
+    usr/local/bin/burn-in.sh       the orchestrator script
+    usr/local/share/burnbench/     defaults conf + success.wav
+    etc/lightdm/...                root autologin straight to XFCE
+    etc/NetworkManager/...         pre-configured wifi connection
+    root/Desktop/Burn-In.desktop   THE icon
+```
+
+## Building
+
+Requirements: any Linux host with **docker** (nothing else), or an Arch host
+with the `archiso` package installed.
+
+```sh
+cp config/wifi.conf.example config/wifi.conf
+$EDITOR config/wifi.conf          # set SSID / PSK
+./build.sh                        # -> out/burnbench-*.iso
+```
+
+Write it to a USB stick:
+
+```sh
+sudo dd if=out/burnbench-*.iso of=/dev/sdX bs=4M conv=fsync oflag=direct status=progress
+```
+
+Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. The machine
+auto-logs-in as root into XFCE.
+
+## Tuning knobs
+
+Live-tunable in `/usr/local/share/burnbench/burnbench.conf`
+(or bake changes into that file in `profile/airootfs/` before building):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `SYSTESTER_MINUTES` | 15 | wall-clock length of the systester stage |
+| `SYSTESTER_DIGITS` | 1M | Gauss-Legendre precision per turn |
+| `SYSTESTER_PER_THREAD_MB` | 64 | RAM budget per worker used by the auto-sizer |
+| `GST_SECONDS` | 60 | stress-ng/GTK phase duration |
+| `SET_PERFORMANCE_GOVERNOR` | 1 | set `performance` governor first |
+| `WIFI_CONNECT` / `WIFI_TIMEOUT_SECS` | 1 / 90 | wifi stage switch & deadline |
+| `CAMERA_CHECK` | 1 | launch viewer when camera found |
+| `PLAY_TONE` | 1 | end-of-run chime |
+
+## Notes / gotchas
+
+- The first double-click may still show XFCE's "untrusted launcher" prompt on
+  some boots if the session-prep step didn't get there first - clicking
+  "Mark as trusted" once is enough.
+- WiFi creds are baked into the image (root-readable). Treat the ISO as
+  sensitive or use a PSK you rotate.
+- systester's thread count is additionally capped by available RAM
+  (~50% headroom) so low-RAM machines don't OOM during burn-in.
+- GST has no CLI auto-run flags upstream, so the script drives stress-ng with
+  the identical parameters GST's UI would use while its monitoring window is
+  open - fully unattended, same workload.
+- Extra benchmarking tools from the PartedMagic toolbox are included for
+  manual runs: hardinfo, bonnie++, memtester, hdparm, gsmartcontrol,
+  gnome-disks (benchmark), stress-ng, lshw, inxi, smartmontools.

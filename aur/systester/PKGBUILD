@@ -1,0 +1,47 @@
+# Maintainer: BurnBench vendored copy (cli-only build)
+# Based on the AUR package by graysky <graysky AT archlinux DOT us>
+# Only the CLI binaries are built; no Qt dependency.
+pkgname=systester
+pkgver=1.5.1
+pkgrel=8
+pkgdesc="System Stability Tester is a RAM/CPU burning and benchmarking program based on calculating pi."
+license=('GPL')
+arch=(x86_64 aarch64)
+url="http://systester.sourceforge.net/"
+makedepends=(gmp)
+source=(http://sourceforge.net/projects/${pkgname}/files/${pkgname}/1.5.0/${pkgname}-${pkgver}.tar.gz)
+sha256sums=('8e88b368d35f45303c586f4028ee010a0e5e67d89d8494cad0fd53359b741df5')
+
+build() {
+  cd "$srcdir"/$pkgname-$pkgver/cli
+
+  # Enlarge fixed-size stack buffers used by sprintf(): modern glibc's
+  # _FORTIFY_SOURCE aborts on the 2012-era overflow in intro()
+  # (xstr[255] / osstring[80] etc.) otherwise.
+  sed -i \
+    -e 's/char xstr\[256\]/char xstr[4096]/g' \
+    -e 's/xstr\[255\]/xstr[4096]/g' \
+    -e 's/osstring\[80\]/osstring[4096]/g' \
+    -e 's/ChipID\[64\]/ChipID[128]/g' \
+    -e 's/VendorID\[64\]/VendorID[128]/g' \
+    -e 's/gmpverstring\[12\]/gmpverstring[256]/g' \
+    systester-cli.c
+
+  # only x86_64 can build both cli and lite
+  if [[ $CARCH == "x86_64" ]]; then
+    make
+  elif [[ $CARCH == "aarch64" ]]; then
+    make lite
+  else
+    warning "Building for arm can result in an executable that will be unstable is NOT recommended!"
+    exit 1
+  fi
+}
+
+package() {
+  pkgdesc="System Stability Tester is a RAM/CPU burning and benchmarking program based on calculating pi."
+  depends=('gmp')
+
+  [[ $CARCH == "x86_64" ]] && install -Dm755 "$srcdir/$pkgname-$pkgver/cli/systester-cli" "$pkgdir/usr/bin/systester-cli"
+  install -Dm755 "$srcdir/$pkgname-$pkgver/cli/systester-lite" "$pkgdir/usr/bin/systester-lite"
+}

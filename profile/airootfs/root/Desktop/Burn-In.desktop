@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=BurnBench Burn-In
+Comment=Double-click to run the automated burn-in and benchmark suite
+Exec=xfce4-terminal --working-directory=/root --title=BurnBench -x /bin/bash -c '/usr/local/bin/burn-in.sh; echo; read -n 1 -s -r -p "Finished. Press any key to close this window..."'
+Icon=applications-system
+Terminal=false
+Categories=System;Monitor;
+StartupNotify=true

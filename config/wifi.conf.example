@@ -1,0 +1,6 @@
+# Copy this file to config/wifi.conf before building.
+# The values are baked into the live ISO's NetworkManager profile.
+# Leave PSK empty ("") for an open network.
+
+SSID="ShopFloor-5G"
+PSK="change-me"

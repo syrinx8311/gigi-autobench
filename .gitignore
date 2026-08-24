@@ -1,0 +1,8 @@
+work/
+out/
+config/wifi.conf
+aur/*/src/
+aur/*/pkg/
+aur/*/*.tar.gz
+aur/*/*.tar.zst
+aur/*/*.tar.zst.sig

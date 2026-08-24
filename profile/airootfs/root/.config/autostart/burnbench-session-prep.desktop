@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=BurnBench session prep
+Comment=Trust the desktop launcher, disable screen blanking
+Exec=/usr/local/bin/burnbench-session-prep.sh
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

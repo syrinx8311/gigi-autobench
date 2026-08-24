@@ -1,0 +1,22 @@
+# Maintainer: BurnBench vendored package (injector is not in the Arch repos)
+pkgname=python-injector
+pkgver=0.24.0
+pkgrel=1
+pkgdesc="Python dependency injection framework"
+arch=(any)
+url="https://github.com/alecthomas/injector"
+license=(MIT)
+depends=(python)
+makedepends=(python-build python-installer python-wheel)
+source=("https://files.pythonhosted.org/packages/source/i/injector/injector-$pkgver.tar.gz")
+sha256sums=('e85a75d1516cff2f03170f3fd1219f56acb25c9a05e307819ae0dcde3dad3d3f')
+
+build() {
+	cd "$srcdir/injector-$pkgver" || return 1
+	python -m build --wheel --no-isolation
+}
+
+package() {
+	cd "$srcdir/injector-$pkgver" || return 1
+	python -m installer --destdir="$pkgdir" dist/*.whl
+}

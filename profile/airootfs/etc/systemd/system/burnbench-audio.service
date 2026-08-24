@@ -1,0 +1,14 @@
+[Unit]
+Description=BurnBench: unmute and set audio output level
+Wants=sound.target
+After=sound.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/amixer sset Master 90% unmute
+ExecStart=/usr/bin/amixer sset Headphone 90% unmute
+ExecStart=/usr/bin/amixer sset Speaker 90% unmute
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sound.target
