@@ -13,7 +13,7 @@ A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 | 1 | CPU governor | Sets every cpufreq policy to `performance` (WARNs where unsupported) |
 | 2 | Network | If a wireless card exists: scans + logs visible networks and connects to the SSID baked into the ISO. Then pings google.com 5 times (~5s) and reports resolved IP / packet loss / avg latency as its own PASS/FAIL line |
 | 3 | Camera | If a capture device exists: launches a viewer window (guvcview) so a human can eyeball it later |
-| 4 | systester-cli | Pi-calculation stability test. **One full turn** at `-gausslg 1M`, auto-sized threads = min(cores, 64, RAM budget), with a live elapsed-time ticker. A safety cap (`SYSTESTER_MAX_MINUTES`, default 30) cuts off pathologically slow machines |
+| 4 | systester-cli | Pi-calculation stability test. **One full turn**, digits auto-sized to **1M per GB of RAM** (snapped to systester's valid tiers, e.g. 16 GB -> 16M), threads = min(cores, 64, scaled RAM budget), live elapsed-time ticker. A safety cap (`SYSTESTER_MAX_MINUTES`, default 30) cuts off pathologically slow machines |
 | 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`), with a countdown |
 
 Every stage prints live progress (spinners, attempt counters, elapsed/remaining tickers) so the script never looks like it's hanging.
@@ -69,7 +69,7 @@ Live-tunable in `/usr/local/share/burnbench/burnbench.conf`
 |----------|---------|---------|
 | `SYSTESTER_TURNS` | 1 | number of full pi-computation turns systester runs |
 | `SYSTESTER_MAX_MINUTES` | 30 | wall-clock safety cap for the systester stage |
-| `SYSTESTER_DIGITS` | 1M | Gauss-Legendre precision per turn |
+| `SYSTESTER_DIGITS` | auto | digits per turn; "auto" = 1M per GB of RAM snapped to a valid tier (128K..128M) |
 | `SYSTESTER_PER_THREAD_MB` | 64 | RAM budget per worker used by the auto-sizer |
 | `GST_SECONDS` | 60 | stress-ng/GTK phase duration |
 | `SET_PERFORMANCE_GOVERNOR` | 1 | set `performance` governor first |

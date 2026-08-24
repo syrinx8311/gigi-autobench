@@ -234,40 +234,63 @@ section "Stage 4: systester-cli (CPU/RAM stability, $SYSTESTER_TURNS turn(s))"
 command -v systester-cli >/dev/null 2>&1 || stage "systester" "FAIL" "binary missing from image"
 
 if [ -z "${RESULTS[systester]:-}" ]; then
+    # ---- digits: 1M per GB of RAM, snapped to a valid systester tier ----
+    DIGITS="${SYSTESTER_DIGITS:-auto}"
+    if [ "$DIGITS" = "auto" ]; then
+        DIGITS="$(awk -v mb="$MEM_TOTAL_MB" 'BEGIN {
+            gb = mb / 1024
+            split("128K 256K 512K 1M 2M 4M 8M 16M 32M 64M 128M", name, " ")
+            split("0.125 0.25 0.5 1 2 4 8 16 32 64 128",      val,  " ")
+            d = "128K"
+            for (i = 1; i <= 11; i++) if (gb >= val[i]) d = name[i]
+            print d
+        }')"
+    fi
+    # memory used by a worker scales with digit count: budget is
+    # SYSTESTER_PER_THREAD_MB at 1M digits, scaled proportionally
+    DM="$(awk -v d="$DIGITS" 'BEGIN {
+        split("128K 256K 512K 1M 2M 4M 8M 16M 32M 64M 128M", name, " ")
+        split("0.125 0.25 0.5 1 2 4 8 16 32 64 128",         val,  " ")
+        for (i = 1; i <= 11; i++) if (name[i] == d) printf "%.3f", val[i]
+    }')"
+    PER_THREAD_MB="$(awk -v m="$SYSTESTER_PER_THREAD_MB" -v dm="$DM" 'BEGIN {printf "%d", m * dm}')"
+    [ "$PER_THREAD_MB" -lt 8 ] 2>/dev/null && PER_THREAD_MB=8
+
     THREADS="$NPROC"
     # systester hard-caps at MAX_THREADS 64
     [ "$THREADS" -gt 64 ] && THREADS=64
     # keep total worker memory under ~50% of what is currently available
-    MEM_CAP_THREADS=$((MEM_AVAIL_MB * 50 / 100 / SYSTESTER_PER_THREAD_MB))
+    MEM_CAP_THREADS=$((MEM_AVAIL_MB * 50 / 100 / PER_THREAD_MB))
     if [ "$THREADS" -gt "$MEM_CAP_THREADS" ]; then
-        log "RAM guard: limiting threads $THREADS -> $MEM_CAP_THREADS (${SYSTESTER_PER_THREAD_MB}MB/thread budget)"
+        log "RAM guard: limiting threads $THREADS -> $MEM_CAP_THREADS (${PER_THREAD_MB}MB/thread at $DIGITS digits)"
         THREADS="$MEM_CAP_THREADS"
     fi
     [ "$THREADS" -lt 1 ] && THREADS=1
 
     SYST_DIR="$LOG_DIR/$STAMP/systester"
     mkdir -p "$SYST_DIR"
-    log "running: systester-cli -gausslg $SYSTESTER_DIGITS -threads $THREADS -turns $SYSTESTER_TURNS"
+    log "RAM ${MEM_TOTAL_MB}MB -> $DIGITS digits (1M per GB rule); $THREADS threads x ${PER_THREAD_MB}MB budget"
+    log "running: systester-cli -gausslg $DIGITS -threads $THREADS -turns $SYSTESTER_TURNS"
     log "(live progress below; safety cap ${SYSTESTER_MAX_MINUTES} min)"
 
     (
         cd "$SYST_DIR" &&
         timeout -k 30 "${SYSTESTER_MAX_MINUTES}m" \
-            systester-cli -gausslg "$SYSTESTER_DIGITS" -threads "$THREADS" -turns "$SYSTESTER_TURNS" -test -log
+            systester-cli -gausslg "$DIGITS" -threads "$THREADS" -turns "$SYSTESTER_TURNS" -test -log
     ) >>"$LOG" 2>&1 &
     SYST_PID=$!
     SYST_START=$SECONDS
     while kill -0 "$SYST_PID" 2>/dev/null; do
         sleep 5
         EL=$((SECONDS - SYST_START))
-        printf '\r    [systester] crunching pi (%s digits, %d threads)... %s elapsed / cap %dmin   ' \
-            "$SYSTESTER_DIGITS" "$THREADS" "$(fmt_mmss "$EL")" "$SYSTESTER_MAX_MINUTES"
+        printf '\r    [systester] crunching pi (%s digits = %s/GB RAM, %d threads)... %s elapsed / cap %dmin   ' \
+            "$DIGITS" "$DM" "$THREADS" "$(fmt_mmss "$EL")" "$SYSTESTER_MAX_MINUTES"
     done
     wait "$SYST_PID"
     rc=$?
     clr
     if [ "$rc" -eq 0 ]; then
-        stage "systester" "PASS" "completed $SYSTESTER_TURNS turn(s) at $SYSTESTER_DIGITS digits with $THREADS threads in $(fmt_mmss $((SECONDS - SYST_START))) - no errors"
+        stage "systester" "PASS" "completed $SYSTESTER_TURNS turn(s) at $DIGITS digits ($MEM_TOTAL_MB MB RAM) with $THREADS threads in $(fmt_mmss $((SECONDS - SYST_START))) - no errors"
         tail -n 15 "$SYST_DIR/systester.log" >>"$LOG" 2>/dev/null || true
     elif [ "$rc" -eq 124 ]; then
         stage "systester" "FAIL" "hit the ${SYSTESTER_MAX_MINUTES}min safety cap mid-turn (machine too slow or hung?)"
