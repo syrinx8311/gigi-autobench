@@ -93,16 +93,42 @@ BIOS:       $(dmidecode -s bios-version 2>/dev/null) ($(dmidecode -s bios-releas
 Kernel:     $(uname -r)  Live medium: BurnBench
 EOF
 
-# make sure every mixer control is unmuted at 75% before we rely on audio
+# make absolutely sure audio will be audible: unmute every ALSA control at
+# 75%, nudge PipeWire to life, force analog speaker routing, set sink volume
 audio_setup() {
-    local ctl
+    local ctl card prof
+    # 1) user session sound server - start it if it somehow isn't running
+    if ! pactl info >>"$LOG" 2>&1; then
+        systemctl --user start pipewire pipewire-pulse wireplumber >>"$LOG" 2>&1
+        sleep 2
+    fi
+    # 2) kernel-level mixer: everything up, 75%
     while read -r ctl; do
         amixer sset "$ctl" 75% unmute >>"$LOG" 2>&1
     done < <(amixer scontrols 2>/dev/null | sed -n "s/.*'\(.*\)'.*/\1/p")
+    alsactl init >>"$LOG" 2>&1 || true
+    # 3) PipeWire/Pulse layer: prefer the analog speaker path over HDMI
+    card="$(pactl list cards short 2>/dev/null | awk 'NR==2{print $2}')"
+    if [ -n "$card" ]; then
+        prof="$(pactl list cards 2>/dev/null \
+            | grep -oE 'output:[a-z0-9_-]*analog-stereo' | head -1 | cut -d: -f2)"
+        [ -n "$prof" ] && pactl set-card-profile "$card" "$prof" >>"$LOG" 2>&1
+    fi
+    pactl set-sink-mute @DEFAULT_SINK@ 0 >>"$LOG" 2>&1
+    pactl set-sink-volume @DEFAULT_SINK@ 75% >>"$LOG" 2>&1
+    pactl set-sink-port @DEFAULT_SINK@ analog-output-speaker >>"$LOG" 2>&1
+    # diagnostics in case audio STILL fails on some laptop
+    { echo "--- audio state ---"; aplay -l 2>&1; amixer scontrols 2>&1; pactl info 2>&1 | head -6; } >>"$LOG"
 }
-spin_start "setting audio outputs to 75% (all controls)"
+spin_start "setting audio outputs to 75% (all controls, analog out)"
 audio_setup
 spin_stop
+
+# early audio check so a silent laptop is noticed NOW, not after the run
+if [ "${START_BEEP:-1}" = "1" ] && [ "${PLAY_TONE:-1}" = "1" ]; then
+    paplay "$SHARE_DIR/fail.wav" >/dev/null 2>&1 && log "start-of-run audio check beep played" \
+        || log "WARNING: start beep failed to play - audio may be silent this run"
+fi
 
 # ------------------------------------------------------- performance gov ---
 if [ "${SET_PERFORMANCE_GOVERNOR:-1}" = "1" ]; then
@@ -270,13 +296,10 @@ if [ -z "${RESULTS[systester]:-}" ]; then
     THREADS="$NPROC"
     # systester hard-caps at MAX_THREADS 64
     [ "$THREADS" -gt 64 ] && THREADS=64
-    # keep total worker memory under ~50% of what is currently available
-    MEM_CAP_THREADS=$((MEM_AVAIL_MB * 50 / 100 / PER_THREAD_MB))
-    if [ "$THREADS" -gt "$MEM_CAP_THREADS" ]; then
-        log "RAM guard: limiting threads $THREADS -> $MEM_CAP_THREADS (${PER_THREAD_MB}MB/thread at $DIGITS digits)"
-        THREADS="$MEM_CAP_THREADS"
-    fi
-    [ "$THREADS" -lt 1 ] && THREADS=1
+    # rough worst-case memory estimate, informational only - we deliberately
+    # run ALL cores per policy even if the estimate looks chunky
+    EST_MEM_MB=$((THREADS * ${DM%%.*} * 8))
+    log "memory estimate at $DIGITS digits x $THREADS threads: ~${EST_MEM_MB}MB (informational)"
 
     SYST_DIR="$LOG_DIR/$STAMP/systester"
     mkdir -p "$SYST_DIR"
@@ -365,14 +388,12 @@ fi
 # ------------------------------------------------------------ fastfetch ---
 if command -v fastfetch >/dev/null 2>&1; then
     section "System info (fastfetch)"
-    LOGO_IMG="$SHARE_DIR/logo-gigi.png"
+    LOGO_TXT="$SHARE_DIR/logo-gigi.txt"
     AVG_MHZ="$(awk '/cpu MHz/{s+=$4; n++} END {if (n) printf "%.0f", s/n}' /proc/cpuinfo)"
     echo
-    if [ -e "$LOGO_IMG" ]; then
-        # graphical logo for the terminal; fall back through render modes
-        fastfetch --logo "$LOGO_IMG" --logo-type chafa 2>>"$LOG" \
-            || fastfetch --logo "$LOGO_IMG" --logo-type sixel 2>>"$LOG" \
-            || fastfetch --logo "$LOGO_IMG" 2>>"$LOG"
+    if [ -e "$LOGO_TXT" ]; then
+        fastfetch --logo "$LOGO_TXT" --logo-type text 2>>"$LOG" \
+            || fastfetch --logo "$LOGO_TXT" 2>>"$LOG"
     else
         fastfetch 2>>"$LOG"
     fi
@@ -380,8 +401,6 @@ if command -v fastfetch >/dev/null 2>&1; then
     # measured current average as well so the number is honest
     printf '  Normal CPU frequency (measured now): %s MHz avg across %d threads\n' "${AVG_MHZ:-?}" "$NPROC" | tee -a "$LOG"
     echo | tee -a "$LOG"
-    # plain-text copy into the report/log without graphics escape codes
-    { fastfetch --logo none 2>>"$LOG" || true; } | tee -a "$LOG" >/dev/null
 fi
 
 # ------------------------------------------------------------ summary ----
@@ -420,6 +439,7 @@ notify_send_done() {
 # ------------------------------------------------------------ the tone ---
 if [ "${PLAY_TONE:-1}" = "1" ]; then
     notify_send_done
+    audio_setup   # fresh mixer/sink state right before playback
     log "playing result tone..."
     if [ "$VERDICT" != "PASS" ]; then
         # three short chimes signal failure audibly

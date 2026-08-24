@@ -17,7 +17,7 @@ A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 | 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`), with a countdown |
 
 Every stage prints live progress (spinners, attempt counters, elapsed/remaining tickers) so the script never looks like it's hanging.
-| 6 | Tone + report | Success clip (`success.mp3` via mpg123/ffplay/mpv; falls back to chime then `speaker-test` sine), desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
+| 6 | Tone + report | Success clip (`success.wav`, the batman mp3 converted at build time; falls back to `success.mp3` via mpg123, then sine). A short beep also plays at run start (`START_BEEP`) and ALL ALSA controls are forced to 75% unmute with analog-speaker routing via PipeWire, desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
 
 Every stage result is PASS/FAIL/SKIP/WARN; exit code is non-zero on any FAIL,
 and the full log lives in `/var/log/burnbench/<timestamp>/`.
