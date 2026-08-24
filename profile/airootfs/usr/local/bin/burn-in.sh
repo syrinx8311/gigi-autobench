@@ -234,15 +234,15 @@ section "Stage 4: systester-cli (CPU/RAM stability, $SYSTESTER_TURNS turn(s))"
 command -v systester-cli >/dev/null 2>&1 || stage "systester" "FAIL" "binary missing from image"
 
 if [ -z "${RESULTS[systester]:-}" ]; then
-    # ---- digits: 1M per GB of RAM, snapped to a valid systester tier ----
+    # ---- digits: 1M per GB of RAM, ROUNDED UP to a valid systester tier ----
     DIGITS="${SYSTESTER_DIGITS:-auto}"
     if [ "$DIGITS" = "auto" ]; then
         DIGITS="$(awk -v mb="$MEM_TOTAL_MB" 'BEGIN {
             gb = mb / 1024
             split("128K 256K 512K 1M 2M 4M 8M 16M 32M 64M 128M", name, " ")
             split("0.125 0.25 0.5 1 2 4 8 16 32 64 128",      val,  " ")
-            d = "128K"
-            for (i = 1; i <= 11; i++) if (gb >= val[i]) d = name[i]
+            d = "128M"
+            for (i = 1; i <= 11; i++) if (gb <= val[i]) { d = name[i]; break }
             print d
         }')"
     fi
@@ -385,6 +385,21 @@ notify_send_done() {
 }
 
 # ------------------------------------------------------------ the tone ---
+play_success_clip() {   # batman.mp3 via whatever mp3 player exists
+    local f="$SHARE_DIR/success.mp3"
+    [ -e "$f" ] || return 1
+    if command -v mpg123 >/dev/null 2>&1; then
+        mpg123 -q "$f" >/dev/null 2>&1 && return 0
+    fi
+    if command -v ffplay >/dev/null 2>&1; then
+        ffplay -nodisp -autoexit -loglevel quiet "$f" >/dev/null 2>&1 && return 0
+    fi
+    if command -v mpv >/dev/null 2>&1; then
+        mpv --really-quiet --no-video "$f" >/dev/null 2>&1 && return 0
+    fi
+    return 1
+}
+
 if [ "${PLAY_TONE:-1}" = "1" ]; then
     notify_send_done
     log "playing result tone..."
@@ -393,8 +408,10 @@ if [ "${PLAY_TONE:-1}" = "1" ]; then
         paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1
         sleep 0.4; paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1; sleep 0.4
         paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1
+    elif play_success_clip; then
+        log "success clip played"
     elif paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1; then
-        log "success tone played"
+        log "success chime played"
     elif command -v speaker-test >/dev/null 2>&1; then
         speaker-test -t sine -f 880 -l 2 >/dev/null 2>&1 && log "tone played via speaker-test"
     else
