@@ -1,13 +1,11 @@
 [Unit]
-Description=BurnBench: unmute and set audio output level
+Description=BurnBench: unmute all audio controls at 75%
 Wants=sound.target
 After=sound.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/amixer sset Master 90% unmute
-ExecStart=/usr/bin/amixer sset Headphone 90% unmute
-ExecStart=/usr/bin/amixer sset Speaker 90% unmute
+ExecStart=/bin/bash -c 'for ctl in $(amixer scontrols | sed -n "s/.*'\''\(.*\)'\''.*/\1/p"); do amixer sset "$ctl" 75% unmute >/dev/null; done'
 RemainAfterExit=yes
 
 [Install]

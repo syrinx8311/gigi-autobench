@@ -93,6 +93,17 @@ BIOS:       $(dmidecode -s bios-version 2>/dev/null) ($(dmidecode -s bios-releas
 Kernel:     $(uname -r)  Live medium: BurnBench
 EOF
 
+# make sure every mixer control is unmuted at 75% before we rely on audio
+audio_setup() {
+    local ctl
+    while read -r ctl; do
+        amixer sset "$ctl" 75% unmute >>"$LOG" 2>&1
+    done < <(amixer scontrols 2>/dev/null | sed -n "s/.*'\(.*\)'.*/\1/p")
+}
+spin_start "setting audio outputs to 75% (all controls)"
+audio_setup
+spin_stop
+
 # ------------------------------------------------------- performance gov ---
 if [ "${SET_PERFORMANCE_GOVERNOR:-1}" = "1" ]; then
     section "Stage 1: CPU governor -> performance"
@@ -351,6 +362,28 @@ else
     fi
 fi
 
+# ------------------------------------------------------------ fastfetch ---
+if command -v fastfetch >/dev/null 2>&1; then
+    section "System info (fastfetch)"
+    LOGO_IMG="$SHARE_DIR/logo-gigi.png"
+    AVG_MHZ="$(awk '/cpu MHz/{s+=$4; n++} END {if (n) printf "%.0f", s/n}' /proc/cpuinfo)"
+    echo
+    if [ -e "$LOGO_IMG" ]; then
+        # graphical logo for the terminal; fall back through render modes
+        fastfetch --logo "$LOGO_IMG" --logo-type chafa 2>>"$LOG" \
+            || fastfetch --logo "$LOGO_IMG" --logo-type sixel 2>>"$LOG" \
+            || fastfetch --logo "$LOGO_IMG" 2>>"$LOG"
+    else
+        fastfetch 2>>"$LOG"
+    fi
+    # fastfetch reports the advertised/max clock on many CPUs; show the real
+    # measured current average as well so the number is honest
+    printf '  Normal CPU frequency (measured now): %s MHz avg across %d threads\n' "${AVG_MHZ:-?}" "$NPROC" | tee -a "$LOG"
+    echo | tee -a "$LOG"
+    # plain-text copy into the report/log without graphics escape codes
+    { fastfetch --logo none 2>>"$LOG" || true; } | tee -a "$LOG" >/dev/null
+fi
+
 # ------------------------------------------------------------ summary ----
 section "Results summary"
 FAILS=0
@@ -385,33 +418,18 @@ notify_send_done() {
 }
 
 # ------------------------------------------------------------ the tone ---
-play_success_clip() {   # batman.mp3 via whatever mp3 player exists
-    local f="$SHARE_DIR/success.mp3"
-    [ -e "$f" ] || return 1
-    if command -v mpg123 >/dev/null 2>&1; then
-        mpg123 -q "$f" >/dev/null 2>&1 && return 0
-    fi
-    if command -v ffplay >/dev/null 2>&1; then
-        ffplay -nodisp -autoexit -loglevel quiet "$f" >/dev/null 2>&1 && return 0
-    fi
-    if command -v mpv >/dev/null 2>&1; then
-        mpv --really-quiet --no-video "$f" >/dev/null 2>&1 && return 0
-    fi
-    return 1
-}
-
 if [ "${PLAY_TONE:-1}" = "1" ]; then
     notify_send_done
     log "playing result tone..."
     if [ "$VERDICT" != "PASS" ]; then
         # three short chimes signal failure audibly
-        paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1
-        sleep 0.4; paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1; sleep 0.4
-        paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1
-    elif play_success_clip; then
-        log "success clip played"
+        paplay "$SHARE_DIR/fail.wav" >/dev/null 2>&1
+        sleep 0.4; paplay "$SHARE_DIR/fail.wav" >/dev/null 2>&1; sleep 0.4
+        paplay "$SHARE_DIR/fail.wav" >/dev/null 2>&1
     elif paplay "$SHARE_DIR/success.wav" >/dev/null 2>&1; then
-        log "success chime played"
+        log "success clip played (wav)"
+    elif command -v mpg123 >/dev/null 2>&1 && mpg123 -q "$SHARE_DIR/success.mp3" >/dev/null 2>&1; then
+        log "success clip played (mp3)"
     elif command -v speaker-test >/dev/null 2>&1; then
         speaker-test -t sine -f 880 -l 2 >/dev/null 2>&1 && log "tone played via speaker-test"
     else

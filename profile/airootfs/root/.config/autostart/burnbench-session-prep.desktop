@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=BurnBench session prep
-Comment=Trust the desktop launcher, disable screen blanking
+Comment=Wallpaper, volume hotkeys, trusted launcher, no screen blanking
 Exec=/usr/local/bin/burnbench-session-prep.sh
 Terminal=false
 NoDisplay=true
