@@ -1,0 +1,11 @@
+[AC][HandleButtonEvents]
+powerButtonAction=8
+powerDownAction=8
+
+[Battery][HandleButtonEvents]
+powerButtonAction=8
+powerDownAction=8
+
+[LowBattery][HandleButtonEvents]
+powerButtonAction=8
+powerDownAction=8

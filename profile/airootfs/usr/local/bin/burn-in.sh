@@ -118,7 +118,13 @@ audio_setup() {
     pactl set-sink-volume @DEFAULT_SINK@ 75% >>"$LOG" 2>&1
     pactl set-sink-port @DEFAULT_SINK@ analog-output-speaker >>"$LOG" 2>&1
     # diagnostics in case audio STILL fails on some laptop
-    { echo "--- audio state ---"; aplay -l 2>&1; amixer scontrols 2>&1; pactl info 2>&1 | head -6; } >>"$LOG"
+    { echo "--- audio state ---"
+      aplay -l 2>&1
+      amixer scontrols 2>&1
+      pactl info 2>&1 | head -6
+      echo "UCM data present: $([ -d /usr/share/alsa/ucm2 ] && echo yes || echo NO)"
+      pactl list cards 2>/dev/null | grep -E 'Active Profile|output:' | head -10
+    } >>"$LOG"
 }
 spin_start "setting audio outputs to 75% (all controls, analog out)"
 audio_setup

@@ -17,7 +17,7 @@ A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 | 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`), with a countdown |
 
 Every stage prints live progress (spinners, attempt counters, elapsed/remaining tickers) so the script never looks like it's hanging.
-| 6 | Tone + report | Success clip (`success.wav`, the batman mp3 converted at build time; falls back to `success.mp3` via mpg123, then sine). A short beep also plays at run start (`START_BEEP`) and ALL ALSA controls are forced to 75% unmute with analog-speaker routing via PipeWire, desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
+| 6 | Tone + report | Success clip (`success.wav`, the batman mp3 converted at build time; falls back to `success.mp3` via mpg123, then sine). A short beep also plays at run start (`START_BEEP`). Audio is aggressively prepared: PipeWire started if down, every ALSA control unmuted at 75%, `alsactl init`, analog-stereo profile + speaker port forced via pactl, and `alsa-ucm-conf` shipped for modern SOF laptops, desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
 
 Every stage result is PASS/FAIL/SKIP/WARN; exit code is non-zero on any FAIL,
 and the full log lives in `/var/log/burnbench/<timestamp>/`.
@@ -58,7 +58,9 @@ Write it to a USB stick:
 sudo dd if=out/burnbench-*.iso of=/dev/sdX bs=4M conv=fsync oflag=direct status=progress
 ```
 
-Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. There is no login screen: tty1 auto-logs-in as root and drops straight into XFCE (if X ever fails to start, check `/root/.xsession.log`; you'll be at a root shell).
+Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. There is no login screen: tty1 auto-logs-in as root and drops straight into KDE Plasma (X11). If the session ever fails to start, check `/root/.plasma-session.log`; you'll be at a root shell.
+
+Desktop behaviour baked in: power button = immediate shutdown, tap-to-click forced on for touchpads, volume keys handled by plasma-pa, wallpaper applied via plasmashell scripting.
 
 ## Tuning knobs
 
