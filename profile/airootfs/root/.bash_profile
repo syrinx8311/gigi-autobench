@@ -1,4 +1,22 @@
-# BurnBench: the autologin on tty1 lands here - go straight into KDE Plasma.
+# BurnBench: the autologin on tty1 lands here - start X ourselves (Plasma 6
+# no longer spawns X from startplasma-x11) and go straight into KDE Plasma.
 if [[ -z "$DISPLAY" ]]; then
-    exec startplasma-x11 >/root/.plasma-session.log 2>&1
+    xinit /usr/bin/startplasma-x11 -- /usr/bin/Xorg -nolisten tcp vt1 \
+        >/root/.plasma-session.log 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] || ! pgrep -x Xorg >/dev/null 2>&1; then
+        {
+        echo ""
+        echo "=================================================================="
+        echo " Plasma failed to start (xinit rc=$rc)"
+        echo "=================================================================="
+        echo "----- /root/.plasma-session.log -----"
+        cat /root/.plasma-session.log 2>/dev/null
+        echo "----- Xorg log -----"
+        tail -n 60 /var/log/Xorg.1.log 2>/dev/null || tail -n 60 /root/.local/share/xorg/Xorg.0.log 2>/dev/null
+        echo "=================================================================="
+        } | tee /dev/ttyS0 2>/dev/null
+        echo " You are at a root shell. Logs: /root/.plasma-session.log"
+    fi
+    exec bash
 fi
