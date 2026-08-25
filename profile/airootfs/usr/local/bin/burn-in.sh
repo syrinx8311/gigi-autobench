@@ -372,12 +372,9 @@ if ! command -v gst >/dev/null 2>&1; then
 elif ! command -v stress-ng >/dev/null 2>&1; then
     stage "gst" "FAIL" "stress-ng missing from image"
 else
-    spin_start "opening GST monitoring window..."
-    setsid nohup gst </dev/null >>"$LOG" 2>&1 &
-    GST_PID=$!
-    sleep 6
-    spin_stop
-    kill -0 "$GST_PID" 2>/dev/null && log "GST GUI open (pid $GST_PID); window stays up so you can review temps later"
+    # No GST GUI - it was pure decoration and annoyed people. The actual test
+    # is the stress-ng run below, which mirrors GST's default preset exactly.
+    log "GST GUI skipped; running its stress preset headlessly"
 
     # Exact mirror of GST's default selection ("CPU: All methods",
     # Workers=Auto): see gst/interactor/get_stressors_interactor.py and
