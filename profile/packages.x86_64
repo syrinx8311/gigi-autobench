@@ -74,10 +74,12 @@ guvcview
 gst
 systester
 
+# --- mic level meter (Stage 3b) ---
+pavucontrol
+
 # --- misc QOL ---
 nano
 less
 htop
 mpg123
 fastfetch
-xfce4-pulseaudio-plugin

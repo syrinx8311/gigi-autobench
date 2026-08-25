@@ -272,6 +272,31 @@ else
     stage "camera" "SKIP" "disabled in config"
 fi
 
+# ------------------------------------------------------------------- mic ---
+section "Stage 3b: Microphone"
+# PipeWire sources exist because audio_setup() started the server earlier;
+# ignore loopback/monitor pseudo-sources - we want real capture hardware.
+MIC_SOURCE="$(pactl list sources short 2>/dev/null | awk '$2 !~ /\.(monitor|echo-cancel)/ {print $2; exit}')"
+if [ -z "$MIC_SOURCE" ]; then
+    ARECORD_CARDS="$(arecord -l 2>/dev/null | grep -c '^card')"
+    if [ "${ARECORD_CARDS:-0}" -gt 0 ]; then
+        stage "mic" "WARN" "$ARECORD_CARDS capture hw device(s) present but no PipeWire source - inspect manually"
+    else
+        stage "mic" "SKIP" "no microphone/capture device detected"
+    fi
+else
+    spin_start "opening live mic level meter..."
+    setsid nohup pavucontrol -t 4 </dev/null >>"$LOG" 2>&1 &
+    MIC_PID=$!
+    sleep 4
+    spin_stop
+    if kill -0 "$MIC_PID" 2>/dev/null; then
+        stage "mic" "PASS" "input source '$MIC_SOURCE' detected - pavucontrol input tab open, talk to see the level bars"
+    else
+        stage "mic" "WARN" "source '$MIC_SOURCE' found but level meter exited early; see log"
+    fi
+fi
+
 # ------------------------------------------------------------ systester ---
 section "Stage 4: systester-cli (CPU/RAM stability, $SYSTESTER_TURNS turn(s))"
 command -v systester-cli >/dev/null 2>&1 || stage "systester" "FAIL" "binary missing from image"
