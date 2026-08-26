@@ -20,4 +20,5 @@ file_permissions=(
   ["/etc/NetworkManager/system-connections/burnbench-wifi.nmconnection"]="0:0:600"
   ["/usr/local/bin/burn-in.sh"]="0:0:755"
   ["/usr/local/bin/burnbench-session-prep.sh"]="0:0:755"
+  ["/usr/local/bin/burnbench-launch.sh"]="0:0:755"
 )

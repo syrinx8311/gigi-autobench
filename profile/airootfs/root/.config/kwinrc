@@ -1,6 +1,6 @@
-[Rules][burnbench-terminal]
-description=BurnBench burn-in terminal fullscreen
-title=BurnBench
-titlematch=1
-fullscreen=true
-fullscreenrule=3
+[org.kde.kdecoration2]
+Library=org.kde.breeze
+Theme=Breeze
+ButtonsOnLeft=
+ButtonsOnRight=IAX
+BorderSize=Normal
