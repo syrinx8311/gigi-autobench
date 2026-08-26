@@ -31,23 +31,27 @@ if [ -e "$WALLPAPER" ]; then
 fi
 
 # ---------------------------------------------------- sound service bootstrap -
-# With agetty -o '-f root' PAM runs → user@0.service → PipeWire starts normally.
-# Belt-and-suspenders: if pactl can't talk to the daemon after 10s, launch
-# the stack directly so the desktop tray icon isn't permanently red.
+# agetty -a skips PAM, so .bash_profile starts user@0.service (whose default
+# target pulls in pipewire/wireplumber/pipewire-pulse). Wait here until the
+# pulse socket answers; fall back to raw daemons if the user manager is dead.
 if command -v pactl >/dev/null 2>&1; then
-    sleep 10
-    if ! pactl info >/dev/null 2>&1; then
-        XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/0}"
-        [ -d "$XDG_RUNTIME_DIR" ] || { mkdir -p "$XDG_RUNTIME_DIR"; chmod 700 "$XDG_RUNTIME_DIR"; }
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/0}"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+    systemctl start user@0.service >/dev/null 2>&1
+    ok=0
+    for i in $(seq 1 30); do
+        pactl info >/dev/null 2>&1 && { ok=1; break; }
+        sleep 1
+    done
+    if [ "$ok" -ne 1 ]; then
+        echo "BurnBench: user PipeWire did not come up, launching raw daemons" >&2
         setsid nohup /usr/bin/pipewire >/dev/null 2>&1 &
         sleep 1
         setsid nohup /usr/bin/wireplumber >/dev/null 2>&1 &
         sleep 1
         setsid nohup /usr/bin/pipewire-pulse >/dev/null 2>&1 &
         sleep 3
-        if pactl info >/dev/null 2>&1; then
-            echo "BurnBench: PipeWire launched manually (fallback)" >&2
-        fi
+        pactl info >/dev/null 2>&1 && echo "BurnBench: raw PipeWire stack is up" >&2
     fi
 fi
 

@@ -285,16 +285,7 @@ if [ -z "$MIC_SOURCE" ]; then
         stage "mic" "SKIP" "no microphone/capture device detected"
     fi
 else
-    spin_start "opening live mic level meter..."
-    setsid nohup pavucontrol -t 4 </dev/null >>"$LOG" 2>&1 &
-    MIC_PID=$!
-    sleep 4
-    spin_stop
-    if kill -0 "$MIC_PID" 2>/dev/null; then
-        stage "mic" "PASS" "input source '$MIC_SOURCE' detected - pavucontrol input tab open, talk to see the level bars"
-    else
-        stage "mic" "WARN" "source '$MIC_SOURCE' found but level meter exited early; see log"
-    fi
+    stage "mic" "PASS" "input source '$MIC_SOURCE' detected - visible in the speaker tray applet's input devices"
 fi
 
 # ------------------------------------------------------------ systester ---

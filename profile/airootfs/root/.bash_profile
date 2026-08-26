@@ -1,6 +1,17 @@
 # BurnBench: the autologin on tty1 lands here - start X ourselves (Plasma 6
 # no longer spawns X from startplasma-x11) and go straight into KDE Plasma.
 if [[ -z "$DISPLAY" ]]; then
+    # agetty -a skips login(1)/PAM, so nothing starts user@0.service and the
+    # whole PipeWire stack (user units) would never come up -> start it here
+    # and point the Plasma session at the user bus.
+    systemctl start user@0.service >/dev/null 2>&1 &
+    export XDG_RUNTIME_DIR=/run/user/0
+    mkdir -m 700 -p "$XDG_RUNTIME_DIR"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+    waited=0
+    while ! systemctl is-active --quiet user@0.service && [ "$waited" -lt 15 ]; do
+        sleep 1; waited=$((waited + 1))
+    done
     xinit /usr/bin/startplasma-x11 -- /usr/bin/Xorg -nolisten tcp vt1 \
         >/root/.plasma-session.log 2>&1
     rc=$?

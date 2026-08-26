@@ -3,4 +3,4 @@ description=BurnBench burn-in terminal fullscreen
 title=BurnBench
 titlematch=1
 fullscreen=true
-fullscreenrule=2
+fullscreenrule=3
