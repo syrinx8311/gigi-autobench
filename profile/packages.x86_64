@@ -1,7 +1,6 @@
 #
 # BurnBench live ISO package list (x86_64)
 #
-
 # --- base system / boot ---
 base
 linux
@@ -15,17 +14,14 @@ syslinux
 efibootmgr
 memtest86+
 memtest86+-efi
-
 # --- firmware for common laptop/desktop hardware ---
 sof-firmware
 wireless-regdb
-
 # --- networking (NetworkManager owns wifi; resolved does DNS) ---
 networkmanager
 wpa_supplicant
 iw
 usbutils
-
 # --- desktop: KDE Plasma (X11 session) ---
 xorg-server
 xorg-xinit
@@ -41,7 +37,6 @@ konsole
 dolphin
 systemsettings
 qt6-tools
-
 # --- audio (PipeWire stack; paplay comes with libpulse) ---
 pipewire
 pipewire-pulse
@@ -50,7 +45,6 @@ wireplumber
 libpulse
 alsa-utils
 alsa-ucm-conf
-
 # --- burn-in & benchmarking tools ---
 stress-ng
 gmp
@@ -66,23 +60,19 @@ memtester
 inxi
 lshw
 v4l-utils
-
 # --- camera viewer (lighter than cheese) ---
 guvcview
-
 # --- built from aur/ by build.sh into the local repo ---
 gst
 systester
-
 # --- mic level meter (Stage 3b) ---
 pavucontrol
-
 # --- misc QOL ---
 nano
 less
 htop
 mpg123
 fastfetch
-kate
 wmctrl
+xorg-xev
 kwin-x11

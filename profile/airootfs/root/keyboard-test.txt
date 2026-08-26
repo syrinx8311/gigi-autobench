@@ -1,4 +1,0 @@
-KEYBOARD TEST PAD
-=================
-Type here to test your keyboard. Every key should produce a character.
-Dead keys, accents and layout switches work normally.
