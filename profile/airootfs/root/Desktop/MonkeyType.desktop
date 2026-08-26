@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboard Test (MonkeyType)
+Comment=Open MonkeyType keyboard testing website
+Exec=falkon https://monkeytype.com
+Terminal=false
+Categories=Utility;
+Icon=input-keyboard

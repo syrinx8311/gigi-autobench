@@ -21,4 +21,5 @@ file_permissions=(
   ["/usr/local/bin/burn-in.sh"]="0:0:755"
   ["/usr/local/bin/burnbench-session-prep.sh"]="0:0:755"
   ["/usr/local/bin/burnbench-launch.sh"]="0:0:755"
+  ["/root/Desktop/MonkeyType.desktop"]="0:0:755"
 )
