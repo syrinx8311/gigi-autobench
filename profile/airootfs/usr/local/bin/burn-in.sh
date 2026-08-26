@@ -133,7 +133,7 @@ spin_stop
 # early audio check so a silent laptop is noticed NOW, not after the run
 if [ "${START_BEEP:-1}" = "1" ] && [ "${PLAY_TONE:-1}" = "1" ]; then
     # --volume=32768 = 50% for this check blip only; master sink stays at 75%
-    paplay --volume=32768 "$SHARE_DIR/fail.wav" >/dev/null 2>&1 && log "start-of-run audio check beep played (50%)" \
+    paplay --volume=32768 "$SHARE_DIR/homebutton.opus" >/dev/null 2>&1 && log "start-of-run audio check beep played (50%)" \
         || log "WARNING: start beep failed to play - audio may be silent this run"
 fi
 
@@ -263,7 +263,8 @@ if [ "${CAMERA_CHECK:-1}" = "1" ]; then
             sleep 4
             spin_stop
             if kill -0 "$CAM_PID" 2>/dev/null; then
-                stage "camera" "PASS" "viewer started for:$CAM_DEVS (pid $CAM_PID) - window left open on desktop"
+                stage "camera" "PASS" "viewer started for:$CAM_DEVS (pid $CAM_PID) - viewer closed after detection"
+                kill "$CAM_PID" 2>/dev/null
             else
                 stage "camera" "WARN" "devices found ($CAM_DEVS) but viewer exited early; see log"
             fi
