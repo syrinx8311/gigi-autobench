@@ -10,11 +10,6 @@ if [[ -z "$DISPLAY" ]]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
     systemctl start user@0.service >/dev/null 2>&1 &
 
-    # Software rendering, always: kwin dying on an odd GPU means a WM-less
-    # session - undecorated windows piled at 0,0, tiling ignored. Reliability
-    # beats eye candy for a bench tool.
-    export KWIN_COMPOSE=Q
-
     waited=0
     while ! systemctl is-active --quiet user@0.service && [ "$waited" -lt 15 ]; do
         sleep 1; waited=$((waited + 1))
