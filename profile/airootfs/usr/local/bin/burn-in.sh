@@ -132,7 +132,8 @@ spin_stop
 
 # early audio check so a silent laptop is noticed NOW, not after the run
 if [ "${START_BEEP:-1}" = "1" ] && [ "${PLAY_TONE:-1}" = "1" ]; then
-    paplay "$SHARE_DIR/fail.wav" >/dev/null 2>&1 && log "start-of-run audio check beep played" \
+    # --volume=32768 = 50% for this check blip only; master sink stays at 75%
+    paplay --volume=32768 "$SHARE_DIR/fail.wav" >/dev/null 2>&1 && log "start-of-run audio check beep played (50%)" \
         || log "WARNING: start beep failed to play - audio may be silent this run"
 fi
 

@@ -30,26 +30,35 @@ if [ -e "$WALLPAPER" ]; then
     set_kde_wallpaper || echo "BurnBench: wallpaper apply failed" >&2
 fi
 
+# ------------------------------------------------------------- kwin watchdog -
+# No kwin_x11 = no window manager: undecorated windows stacked at 0,0 and
+# geometry requests (tiling) silently ignored. Relaunch if it is missing.
+if command -v kwin_x11 >/dev/null 2>&1 && ! pgrep -x kwin_x11 >/dev/null 2>&1; then
+    echo "BurnBench: kwin_x11 not running - relaunching" >&2
+    setsid nohup /usr/bin/kwin_x11 --replace </dev/null \
+        >>"$HOME/.kwin-watchdog.log" 2>&1 &
+fi
+
 # ---------------------------------------------------- sound service bootstrap -
-# agetty -a skips PAM, so .bash_profile starts user@0.service (whose default
-# target pulls in pipewire/wireplumber/pipewire-pulse). Wait here until the
-# pulse socket answers; fall back to raw daemons if the user manager is dead.
+# .bash_profile gates X on working audio; this is the safety net if that
+# regressed. Poll briefly, force-enable the user units, raw daemons last.
 if command -v pactl >/dev/null 2>&1; then
     export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/0}"
-    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-    systemctl start user@0.service >/dev/null 2>&1
+    export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}"
     ok=0
-    for i in $(seq 1 30); do
+    for i in $(seq 1 10); do
         pactl info >/dev/null 2>&1 && { ok=1; break; }
+        [ "$i" -eq 3 ] && systemctl --user enable --now \
+            pipewire.socket pipewire-pulse.socket wireplumber.service >/dev/null 2>&1
         sleep 1
     done
     if [ "$ok" -ne 1 ]; then
         echo "BurnBench: user PipeWire did not come up, launching raw daemons" >&2
-        setsid nohup /usr/bin/pipewire >/dev/null 2>&1 &
+        setsid nohup /usr/bin/pipewire </dev/null >/dev/null 2>&1 &
         sleep 1
-        setsid nohup /usr/bin/wireplumber >/dev/null 2>&1 &
+        setsid nohup /usr/bin/wireplumber </dev/null >/dev/null 2>&1 &
         sleep 1
-        setsid nohup /usr/bin/pipewire-pulse >/dev/null 2>&1 &
+        setsid nohup /usr/bin/pipewire-pulse </dev/null >/dev/null 2>&1 &
         sleep 3
         pactl info >/dev/null 2>&1 && echo "BurnBench: raw PipeWire stack is up" >&2
     fi
