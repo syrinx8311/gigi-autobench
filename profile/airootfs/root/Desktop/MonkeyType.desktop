@@ -2,7 +2,7 @@
 Type=Application
 Name=Keyboard Test (MonkeyType)
 Comment=Open MonkeyType keyboard testing website
-Exec=falkon https://monkeytype.com
+Exec=env QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox" falkon https://monkeytype.com
 Terminal=false
 Categories=Utility;
 Icon=input-keyboard
