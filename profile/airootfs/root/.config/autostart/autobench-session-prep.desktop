@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=BurnBench session prep
+Name=AutoBench session prep
 Comment=Wallpaper, volume hotkeys, trusted launcher, no screen blanking
-Exec=/usr/local/bin/burnbench-session-prep.sh
+Exec=/usr/local/bin/autobench-session-prep.sh
 Terminal=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true

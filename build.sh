@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# BurnBench ISO build script.
+# AutoBench ISO build script.
 #
 #   ./build.sh              build AUR packages (if needed) + the ISO
 #   ./build.sh aur          only build gst/systester into out/repo
@@ -130,14 +130,14 @@ build_aur() {
     done
 
     # rebuild the database from scratch so removed versions disappear
-    rm -f "$REPO"/burnbench.db* "$REPO"/burnbench.files*
-    repo-add "$REPO/burnbench.db.tar.gz" "$REPO"/*.pkg.tar.zst >/dev/null
+    rm -f "$REPO"/autobench.db* "$REPO"/autobench.files*
+    repo-add "$REPO/autobench.db.tar.gz" "$REPO"/*.pkg.tar.zst >/dev/null
     log "local repository ready: $(ls "$REPO" | tr '\n' ' ')"
 }
 
 # ------------------------------------------------------------ wifi render ---
 render_wifi() {
-    local target="$1/airootfs/etc/NetworkManager/system-connections/burnbench-wifi.nmconnection"
+    local target="$1/airootfs/etc/NetworkManager/system-connections/autobench-wifi.nmconnection"
     local ssid psk sec_block
 
     SSID="" PSK=""
@@ -158,7 +158,7 @@ render_wifi() {
 
     cat > "$target" <<EOF
 [connection]
-id=burnbench-wifi
+id=autobench-wifi
 type=wifi
 autoconnect=true
 
@@ -179,14 +179,14 @@ EOF
 # ------------------------------------------------------------------- iso ----
 build_iso() {
     [ -d "$REPO" ] || die "out/repo missing - run './build.sh aur' first"
-    ls "$REPO"/burnbench.db.tar.gz >/dev/null 2>&1 || die "repo db missing - run './build.sh aur' first"
+    ls "$REPO"/autobench.db.tar.gz >/dev/null 2>&1 || die "repo db missing - run './build.sh aur' first"
 
     log "staging profile into $STAGING"
     rm -rf "$STAGING"
     mkdir -p "$WORK"
     cp -a "$PROJECT_DIR/profile" "$STAGING"
     chmod +x "$STAGING"/airootfs/usr/local/bin/*.sh \
-             "$STAGING"/root/Desktop/Burn-In.desktop 2>/dev/null || true
+             "$STAGING"/root/Desktop/AutoBench.desktop 2>/dev/null || true
 
     sed -i "s|__BURN_REPO__|$(sed 's/[\/&]/\\&/g' <<<"$REPO")|" "$STAGING/pacman.conf"
     grep -q '__BURN_REPO__' "$STAGING/pacman.conf" && die "failed to render pacman.conf"

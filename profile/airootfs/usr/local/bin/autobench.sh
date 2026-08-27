@@ -1,23 +1,23 @@
 #!/bin/bash
-# BurnBench automated burn-in and benchmark suite.
-# Designed to be launched from the "BurnBench Burn-In" desktop icon on the
+# AutoBench automated burn-in and benchmark suite.
+# Designed to be launched from the "AutoBench Burn-In" desktop icon on the
 # live ISO. Coworkers double-click, walk away, and hear the tone when done.
 # Every stage prints live progress so it never looks like a hang.
 set -o pipefail
 umask 022
 
-SHARE_DIR="/usr/local/share/burnbench"
-CONF_FILE="$SHARE_DIR/burnbench.conf"
-LOG_DIR="/var/log/burnbench"
+SHARE_DIR="/usr/local/share/autobench"
+CONF_FILE="$SHARE_DIR/autobench.conf"
+LOG_DIR="/var/log/autobench"
 STAMP="$(date +%Y%m%d-%H%M%S)"
-REPORT="$HOME/Desktop/BurnBench-Report-$STAMP.txt"
+REPORT="$HOME/Desktop/AutoBench-Report-$STAMP.txt"
 
-# shellcheck source=burnbench.conf
+# shellcheck source=autobench.conf
 [ -r "$CONF_FILE" ] && . "$CONF_FILE"
 
 HOSTNAME="$(cat /etc/hostname 2>/dev/null || hostname)"
 mkdir -p "$LOG_DIR/$STAMP"
-LOG="$LOG_DIR/$STAMP/burn-in.log"
+LOG="$LOG_DIR/$STAMP/autobench.log"
 
 RESULTS_ORDER=()
 declare -A RESULTS
@@ -72,10 +72,11 @@ fmt_mmss() {       # seconds -> MM:SS
 # ---------------------------------------------------------------- header ---
 {
 echo "==============================================================="
-echo " BurnBench automated burn-in   $(date '+%Y-%m-%d %H:%M:%S')"
+echo " AutoBench automated burn-in   $(date '+%Y-%m-%d %H:%M:%S')"
 echo " Host: $HOSTNAME"
-echo " You can walk away - a chime plays when everything is done."
-echo "==============================================================="
+ echo " You can walk away - a chime plays when everything is done."
+ echo " This ISO was built by Brian + co."
+ echo "==============================================================="
 } | tee "$LOG"
 
 CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ *//')"
@@ -90,11 +91,11 @@ Cores:      $NPROC logical
 RAM:        ${MEM_TOTAL_MB} MB total / ${MEM_AVAIL_MB} MB available
 Board:      $(dmidecode -s baseboard-manufacturer 2>/dev/null) $(dmidecode -s baseboard-product-name 2>/dev/null)
 BIOS:       $(dmidecode -s bios-version 2>/dev/null) ($(dmidecode -s bios-release-date 2>/dev/null))
-Kernel:     $(uname -r)  Live medium: BurnBench
+Kernel:     $(uname -r)  Live medium: AutoBench
 EOF
 
 # make absolutely sure audio will be audible: unmute every ALSA control at
-# 75%, nudge PipeWire to life, force analog speaker routing, set sink volume
+# 85%, nudge PipeWire to life, force analog speaker routing, set sink volume
 audio_setup() {
     local ctl card prof
     # 1) user session sound server - start it if it somehow isn't running
@@ -102,9 +103,9 @@ audio_setup() {
         systemctl --user start pipewire pipewire-pulse wireplumber >>"$LOG" 2>&1
         sleep 2
     fi
-    # 2) kernel-level mixer: everything up, 75%
+    # 2) kernel-level mixer: everything up, 85%
     while read -r ctl; do
-        amixer sset "$ctl" 75% unmute >>"$LOG" 2>&1
+        amixer sset "$ctl" 85% unmute >>"$LOG" 2>&1
     done < <(amixer scontrols 2>/dev/null | sed -n "s/.*'\(.*\)'.*/\1/p")
     alsactl init >>"$LOG" 2>&1 || true
     # 3) PipeWire/Pulse layer: prefer the analog speaker path over HDMI
@@ -115,7 +116,7 @@ audio_setup() {
         [ -n "$prof" ] && pactl set-card-profile "$card" "$prof" >>"$LOG" 2>&1
     fi
     pactl set-sink-mute @DEFAULT_SINK@ 0 >>"$LOG" 2>&1
-    pactl set-sink-volume @DEFAULT_SINK@ 75% >>"$LOG" 2>&1
+    pactl set-sink-volume @DEFAULT_SINK@ 85% >>"$LOG" 2>&1
     pactl set-sink-port @DEFAULT_SINK@ analog-output-speaker >>"$LOG" 2>&1
     # diagnostics in case audio STILL fails on some laptop
     { echo "--- audio state ---"
@@ -126,14 +127,14 @@ audio_setup() {
       pactl list cards 2>/dev/null | grep -E 'Active Profile|output:' | head -10
     } >>"$LOG"
 }
-spin_start "setting audio outputs to 75% (all controls, analog out)"
+spin_start "setting audio outputs to 85% (all controls, analog out)"
 audio_setup
 spin_stop
 
 # early audio check so a silent laptop is noticed NOW, not after the run
 if [ "${START_BEEP:-1}" = "1" ] && [ "${PLAY_TONE:-1}" = "1" ]; then
-    # --volume=32768 = 50% for this check blip only; master sink stays at 75%
-    paplay --volume=32768 "$SHARE_DIR/homebutton.opus" >/dev/null 2>&1 && log "start-of-run audio check beep played (50%)" \
+    # --volume=55705 = 85% for this check chime; master sink is also 85%
+    paplay --volume=55705 "$SHARE_DIR/homebutton.opus" >/dev/null 2>&1 && log "start-of-run audio check chime played (85%)" \
         || log "WARNING: start beep failed to play - audio may be silent this run"
 fi
 
@@ -179,7 +180,7 @@ if [ "${WIFI_CONNECT:-1}" = "1" ]; then
         run_logged rfkill unblock wifi
         run_logged nmcli radio wifi on
         BAKED_SSID=$(sed -n 's/^ssid=//p' \
-            /etc/NetworkManager/system-connections/burnbench-wifi.nmconnection 2>/dev/null | head -1)
+            /etc/NetworkManager/system-connections/autobench-wifi.nmconnection 2>/dev/null | head -1)
 
         spin_start "scanning for networks..."
         nmcli device wifi list --rescan yes >>"$LOG" 2>&1
@@ -190,22 +191,22 @@ if [ "${WIFI_CONNECT:-1}" = "1" ]; then
 
         MAX_ATTEMPTS=$((WIFI_TIMEOUT_SECS / 5))
         attempt=0
-        until nmcli -t -f GENERAL.STATE connection show burnbench-wifi 2>/dev/null | grep -q activated; do
+        until nmcli -t -f GENERAL.STATE connection show autobench-wifi 2>/dev/null | grep -q activated; do
             attempt=$((attempt + 1))
             printf '\r    connecting to "%s"... attempt %d/%d   ' "${BAKED_SSID:-?}" "$attempt" "$MAX_ATTEMPTS"
-            nmcli connection up burnbench-wifi --nowait >>"$LOG" 2>&1
+            nmcli connection up autobench-wifi --nowait >>"$LOG" 2>&1
             [ "$attempt" -ge "$MAX_ATTEMPTS" ] && break
             sleep 5
         done
         clr
 
-        if nmcli -t -f GENERAL.STATE connection show burnbench-wifi 2>/dev/null | grep -q activated; then
-            ACT_IFACE="$(nmcli -g GENERAL.DEVICES connection show burnbench-wifi 2>/dev/null)"
+        if nmcli -t -f GENERAL.STATE connection show autobench-wifi 2>/dev/null | grep -q activated; then
+            ACT_IFACE="$(nmcli -g GENERAL.DEVICES connection show autobench-wifi 2>/dev/null)"
             IP_ADDR="$(ip -4 -o addr show dev "$ACT_IFACE" 2>/dev/null | awk '{split($4,a,"/"); print a[1]; exit}')"
             SIGNAL="$(nmcli -t -f ACTIVE,SIGNAL dev wifi list 2>/dev/null | head -1)"
-            stage "wifi" "PASS" "connected to '${BAKED_SSID:-burnbench-wifi}' via $ACT_IFACE ip=$IP_ADDR signal=${SIGNAL:-?}%"
+            stage "wifi" "PASS" "connected to '${BAKED_SSID:-autobench-wifi}' via $ACT_IFACE ip=$IP_ADDR signal=${SIGNAL:-?}%"
         else
-            stage "wifi" "FAIL" "could not associate with '${BAKED_SSID:-burnbench-wifi}' within ${WIFI_TIMEOUT_SECS}s (see log)"
+            stage "wifi" "FAIL" "could not associate with '${BAKED_SSID:-autobench-wifi}' within ${WIFI_TIMEOUT_SECS}s (see log)"
         fi
     fi
 
@@ -453,7 +454,7 @@ cp "$LOG" "$REPORT" 2>/dev/null || cp "$LOG" "$HOME/Desktop/" 2>/dev/null || tru
 
 notify_send_done() {
     command -v notify-send >/dev/null 2>&1 && \
-        notify-send -u critical -i dialog-information "BurnBench finished: $VERDICT" \
+        notify-send -u critical -i dialog-information "AutoBench finished: $VERDICT" \
         "Report on the desktop: $(basename "$REPORT")"
 }
 

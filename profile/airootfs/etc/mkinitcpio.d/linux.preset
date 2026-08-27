@@ -1,8 +1,8 @@
-# mkinitcpio preset file for the 'linux' package on burnbench
+# mkinitcpio preset file for the 'linux' package on autobench
 
-PRESETS=('burnbench')
+PRESETS=('autobench')
 
 ALL_kver='/boot/vmlinuz-linux'
-burnbench_config='/etc/mkinitcpio.conf.d/archiso.conf'
+autobench_config='/etc/mkinitcpio.conf.d/archiso.conf'
 
-burnbench_image="/boot/initramfs-linux.img"
+autobench_image="/boot/initramfs-linux.img"

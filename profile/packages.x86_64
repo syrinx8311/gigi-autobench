@@ -1,5 +1,5 @@
 #
-# BurnBench live ISO package list (x86_64)
+# AutoBench live ISO package list (x86_64)
 #
 # --- base system / boot ---
 base
@@ -45,7 +45,7 @@ wireplumber
 libpulse
 alsa-utils
 alsa-ucm-conf
-# --- burn-in & benchmarking tools ---
+# --- burn-in # --- burn-in & benchmarking tools --- benchmarking tools ---
 stress-ng
 gmp
 dmidecode

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Burn-In
-Comment=Run the BurnBench hardware burn-in suite
-Exec=/usr/local/bin/burnbench-launch.sh
-Terminal=false
-Categories=System;
-Icon=utilities-system-monitor

@@ -1,9 +1,9 @@
 #!/bin/bash
-# BurnBench session preparation (KDE Plasma). Runs once after the session
+# AutoBench session preparation (KDE Plasma). Runs once after the session
 # starts, via ~/.config/autostart.
 set -u
 
-WALLPAPER="/usr/local/share/burnbench/wallpaper.png"
+WALLPAPER="/usr/local/share/autobench/wallpaper.png"
 
 # ------------------------------------------------------------- wallpaper ---
 set_kde_wallpaper() { # retry until plasmashell is on the bus (max ~30s)
@@ -27,14 +27,14 @@ set_kde_wallpaper() { # retry until plasmashell is on the bus (max ~30s)
     done
 }
 if [ -e "$WALLPAPER" ]; then
-    set_kde_wallpaper || echo "BurnBench: wallpaper apply failed" >&2
+    set_kde_wallpaper || echo "AutoBench: wallpaper apply failed" >&2
 fi
 
 # ------------------------------------------------------------- kwin watchdog -
 # No kwin_x11 = no window manager: undecorated windows stacked at 0,0 and
 # geometry requests (tiling) silently ignored. Relaunch if it is missing.
 if command -v kwin_x11 >/dev/null 2>&1 && ! pgrep -x kwin_x11 >/dev/null 2>&1; then
-    echo "BurnBench: kwin_x11 not running - relaunching" >&2
+    echo "AutoBench: kwin_x11 not running - relaunching" >&2
     setsid nohup /usr/bin/kwin_x11 --replace </dev/null \
         >>"$HOME/.kwin-watchdog.log" 2>&1 &
 fi
@@ -53,14 +53,14 @@ if command -v pactl >/dev/null 2>&1; then
         sleep 1
     done
     if [ "$ok" -ne 1 ]; then
-        echo "BurnBench: user PipeWire did not come up, launching raw daemons" >&2
+        echo "AutoBench: user PipeWire did not come up, launching raw daemons" >&2
         setsid nohup /usr/bin/pipewire </dev/null >/dev/null 2>&1 &
         sleep 1
         setsid nohup /usr/bin/wireplumber </dev/null >/dev/null 2>&1 &
         sleep 1
         setsid nohup /usr/bin/pipewire-pulse </dev/null >/dev/null 2>&1 &
         sleep 3
-        pactl info >/dev/null 2>&1 && echo "BurnBench: raw PipeWire stack is up" >&2
+        pactl info >/dev/null 2>&1 && echo "AutoBench: raw PipeWire stack is up" >&2
     fi
 fi
 
@@ -82,7 +82,7 @@ fi
 xset s off -dpms 2>/dev/null
 xset s noblank 2>/dev/null
 
-launcher="$HOME/Desktop/Burn-In.desktop"
+launcher="$HOME/Desktop/AutoBench.desktop"
 chmod +x "$launcher" 2>/dev/null || true
 if command -v gio >/dev/null 2>&1; then
     gio set "$launcher" metadata::trusted true 2>/dev/null || true

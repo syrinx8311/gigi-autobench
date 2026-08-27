@@ -1,6 +1,6 @@
 # Rendered by build.sh from config/wifi.conf (__WIFI_*__ markers replaced).
 [connection]
-id=burnbench-wifi
+id=autobench-wifi
 type=wifi
 autoconnect=true
 

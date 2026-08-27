@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=AutoBench
+Comment=Run the AutoBench hardware burn-in suite
+Exec=/usr/local/bin/autobench-launch.sh
+Terminal=false
+Categories=System;
+Icon=utilities-system-monitor

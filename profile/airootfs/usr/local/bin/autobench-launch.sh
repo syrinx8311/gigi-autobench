@@ -1,8 +1,8 @@
 #!/bin/bash
-# BurnBench desktop launcher: maximized burn-in terminal, auto-sized to display.
+# AutoBench desktop launcher: maximized burn-in terminal, auto-sized to display.
 set -u
 
-pgrep -f '/usr/local/bin/burn-in.sh' >/dev/null && {
+pgrep -f '/usr/local/bin/autobench.sh' >/dev/null && {
     kdialog --sorry "Burn-in is already running." 2>/dev/null || true
     exit 0
 }
@@ -18,5 +18,5 @@ if [ -n "$res" ]; then
     [ "$cols" -gt 20 ] && [ "$rows" -gt 10 ] && GEO="--geometry ${cols}x${rows}"
 fi
 
-exec konsole --title BurnBench ${GEO:---geometry 160x50} -e /bin/bash -c \
-    '/usr/local/bin/burn-in.sh; echo; read -n 1 -s -r -p "Finished. Press any key to close this window..."'
+exec konsole --title AutoBench ${GEO:---geometry 160x50} -e /bin/bash -c \
+    '/usr/local/bin/autobench.sh; echo; read -n 1 -s -r -p "Finished. Press any key to close this window..."'

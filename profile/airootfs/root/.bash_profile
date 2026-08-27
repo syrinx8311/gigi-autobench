@@ -1,7 +1,7 @@
-# BurnBench: the autologin on tty1 lands here - start X ourselves (Plasma 6
+# AutoBench: the autologin on tty1 lands here - start X ourselves (Plasma 6
 # no longer spawns X from startplasma-x11) and go straight into KDE Plasma.
 if [[ -z "$DISPLAY" ]]; then
-    say() { echo "burnbench-boot: $*" | tee /dev/ttyS0 2>/dev/null; }
+    say() { echo "autobench-boot: $*" | tee /dev/ttyS0 2>/dev/null; }
 
     # agetty -a skips login(1)/PAM, so nothing starts user@0.service; without
     # it the whole PipeWire stack (user units) never comes up.
