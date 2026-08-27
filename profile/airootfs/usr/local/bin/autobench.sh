@@ -407,24 +407,6 @@ else
     fi
 fi
 
-# ------------------------------------------------------------ fastfetch ---
-if command -v fastfetch >/dev/null 2>&1; then
-    section "System info (fastfetch)"
-    LOGO_TXT="$SHARE_DIR/logo-gigi.txt"
-    AVG_MHZ="$(awk '/cpu MHz/{s+=$4; n++} END {if (n) printf "%.0f", s/n}' /proc/cpuinfo)"
-    echo
-    if [ -e "$LOGO_TXT" ]; then
-        fastfetch --logo "$LOGO_TXT" --logo-type text 2>>"$LOG" \
-            || fastfetch --logo "$LOGO_TXT" 2>>"$LOG"
-    else
-        fastfetch 2>>"$LOG"
-    fi
-    # fastfetch reports the advertised/max clock on many CPUs; show the real
-    # measured current average as well so the number is honest
-    printf '  Normal CPU frequency (measured now): %s MHz avg across %d threads\n' "${AVG_MHZ:-?}" "$NPROC" | tee -a "$LOG"
-    echo | tee -a "$LOG"
-fi
-
 # ------------------------------------------------------------ summary ----
 section "Results summary"
 FAILS=0
@@ -479,6 +461,26 @@ if [ "${PLAY_TONE:-1}" = "1" ]; then
     fi
 else
     notify_send_done
+fi
+
+# ------------------------------------------------------- fastfetch (last) ---
+# System info as the final thing on screen: results are above, this is the
+# last page the operator sees before walking away.
+if command -v fastfetch >/dev/null 2>&1; then
+    section "System info (fastfetch)"
+    LOGO_TXT="$SHARE_DIR/logo-gigi.txt"
+    AVG_MHZ="$(awk '/cpu MHz/{s+=$4; n++} END {if (n) printf "%.0f", s/n}' /proc/cpuinfo)"
+    echo
+    if [ -e "$LOGO_TXT" ]; then
+        fastfetch --logo "$LOGO_TXT" --logo-type text 2>>"$LOG" \
+            || fastfetch --logo "$LOGO_TXT" 2>>"$LOG"
+    else
+        fastfetch 2>>"$LOG"
+    fi
+    # fastfetch reports the advertised/max clock on many CPUs; show the real
+    # measured current average as well so the number is honest
+    printf '  Normal CPU frequency (measured now): %s MHz avg across %d threads\n' "${AVG_MHZ:-?}" "$NPROC" | tee -a "$LOG"
+    echo | tee -a "$LOG"
 fi
 
 log "all stages complete - verdict $VERDICT"
