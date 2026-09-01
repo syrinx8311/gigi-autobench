@@ -1,4 +1,4 @@
-# Maintainer: BurnBench vendored copy (cli-only build)
+# Maintainer: AutoBench vendored copy (cli-only build)
 # Based on the AUR package by graysky <graysky AT archlinux DOT us>
 # Only the CLI binaries are built; no Qt dependency.
 pkgname=systester

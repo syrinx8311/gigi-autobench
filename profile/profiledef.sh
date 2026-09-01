@@ -6,7 +6,7 @@ iso_label="AUTOBENCH_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m%d)
 iso_publisher="AutoBench <https://example.invalid>"
 iso_application="AutoBench Live / Hardware Burn-in and Benchmark"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
-install_dir="burnbench"
+install_dir="autobench"
 buildmodes=('iso')
 bootmodes=('bios.syslinux'
            'uefi.systemd-boot')
