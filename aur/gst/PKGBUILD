@@ -1,4 +1,4 @@
-# Maintainer: BurnBench vendored copy of the AUR 'gst' package
+# Maintainer: AutoBench vendored copy of the AUR 'gst' package
 # Original maintainers: Leo <i@setuid0.dev>, Sophie Tauchert <sophie@999eagle.moe>
 # Upstream: https://gitlab.com/leinardi/gst  (GtkStressTesting)
 pkgname=gst

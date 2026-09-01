@@ -1,11 +1,11 @@
-# BurnBench
+# AutoBench
 
 An Arch-based live ISO in the spirit of PartedMagic, focused on **automated
 hardware burn-in and benchmarking** with quality-of-life improvements for
 shop-floor use: boot the USB stick, double-click one desktop icon, walk away.
 A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 
-## What the automated run does (double-click `BurnBench Burn-In`)
+## What the automated run does (double-click `AutoBench Burn-In`)
 
 | # | Stage | Behaviour |
 |---|-------|-----------|
@@ -17,10 +17,10 @@ A tone plays and a PASS/FAIL report lands on the desktop when it's done.
 | 5 | GTK Stress Testing | Opens the GST GUI (temps/frequency graphs) and drives the exact same stress-ng command GST's "CPU: All methods" preset would run: all cores, verified, 60 s (`GST_SECONDS`), with a countdown |
 
 Every stage prints live progress (spinners, attempt counters, elapsed/remaining tickers) so the script never looks like it's hanging.
-| 6 | Tone + report | Success clip (`success.wav`, the batman mp3 converted at build time; falls back to `success.mp3` via mpg123, then sine). A short beep also plays at run start (`START_BEEP`). Audio is aggressively prepared: PipeWire started if down, every ALSA control unmuted at 75%, `alsactl init`, analog-stereo profile + speaker port forced via pactl, and `alsa-ucm-conf` shipped for modern SOF laptops, desktop notification, `BurnBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
+| 6 | Tone + report | Success clip (`success.wav`, the batman mp3 converted at build time; falls back to `success.mp3` via mpg123, then sine). A short beep also plays at run start (`START_BEEP`). Audio is aggressively prepared: PipeWire started if down, every ALSA control unmuted at 75%, `alsactl init`, analog-stereo profile + speaker port forced via pactl, and `alsa-ucm-conf` shipped for modern SOF laptops, desktop notification, `AutoBench-Report-<date>.txt` on the desktop. Three chimes = something FAILED |
 
 Every stage result is PASS/FAIL/SKIP/WARN; exit code is non-zero on any FAIL,
-and the full log lives in `/var/log/burnbench/<timestamp>/`.
+and the full log lives in `/var/log/autobench/<timestamp>/`.
 
 ## Repository layout
 
@@ -31,14 +31,14 @@ aur/                  vendored PKGBUILDs (gst, systester cli-only build)
 profile/
   profiledef.sh       archiso profile definition
   packages.x86_64     package list
-  pacman.conf         official repos + local [burnbench] repo
+  pacman.conf         official repos + local AUR repo (out/repo, db autobench.db)
   grub/, syslinux/, efiboot/   boot menus (3s timeout, Memtest86+ entries)
   airootfs/           everything that lands in the live root:
-    usr/local/bin/burn-in.sh       the orchestrator script
-    usr/local/share/burnbench/     defaults conf + success.wav
+    usr/local/bin/autobench.sh the orchestrator script
+    usr/local/share/autobench/      defaults conf + success.wav
     etc/lightdm/...                root autologin straight to XFCE
     etc/NetworkManager/...         pre-configured wifi connection
-    root/Desktop/Burn-In.desktop   THE icon
+    root/Desktop/AutoBench.desktop THE icon
 ```
 
 ## Building
@@ -49,13 +49,13 @@ with the `archiso` package installed.
 ```sh
 cp config/wifi.conf.example config/wifi.conf
 $EDITOR config/wifi.conf          # set SSID / PSK
-./build.sh                        # -> out/burnbench-*.iso
+./build.sh                        # -> out/autobench-*.iso
 ```
 
 Write it to a USB stick:
 
 ```sh
-sudo dd if=out/burnbench-*.iso of=/dev/sdX bs=4M conv=fsync oflag=direct status=progress
+sudo dd if=out/autobench-*.iso of=/dev/sdX bs=4M conv=fsync oflag=direct status=progress
 ```
 
 Both BIOS (syslinux) and UEFI (systemd-boot) boot are supported. There is no login screen: tty1 auto-logs-in as root and drops straight into KDE Plasma (X11). If the session ever fails to start, check `/root/.plasma-session.log`; you'll be at a root shell.
@@ -64,7 +64,7 @@ Desktop behaviour baked in: power button = immediate shutdown, tap-to-click forc
 
 ## Tuning knobs
 
-Live-tunable in `/usr/local/share/burnbench/burnbench.conf`
+Live-tunable in `/usr/local/share/autobench/autobench.conf`
 (or bake changes into that file in `profile/airootfs/` before building):
 
 | Variable | Default | Meaning |

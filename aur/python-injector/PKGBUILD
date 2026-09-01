@@ -1,4 +1,4 @@
-# Maintainer: BurnBench vendored package (injector is not in the Arch repos)
+# Maintainer: AutoBench vendored package (injector is not in the Arch repos)
 pkgname=python-injector
 pkgver=0.24.0
 pkgrel=1

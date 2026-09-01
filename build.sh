@@ -20,7 +20,7 @@ OUT="$PROJECT_DIR/out"
 WORK="$PROJECT_DIR/work"
 REPO="$OUT/repo"
 STAGING="$WORK/profile"
-IMAGE="${BURNBENCH_IMAGE:-archlinux:latest}"
+IMAGE="${AUTOBENCH_IMAGE:-archlinux:latest}"
 
 WIFI_CONF="$PROJECT_DIR/config/wifi.conf"
 
@@ -57,7 +57,7 @@ maybe_docker() {
         export HOST_UID HOST_GID
         docker run --rm --privileged \
             -v "$PROJECT_DIR":/project -w /project \
-            -e BURNBENCH_IMAGE="$IMAGE" \
+            -e AUTOBENCH_IMAGE="$IMAGE" \
             -e HOST_UID -e HOST_GID \
             "$IMAGE" \
             bash -c '
