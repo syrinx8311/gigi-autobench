@@ -21,6 +21,9 @@ file_permissions=(
   ["/usr/local/bin/autobench.sh"]="0:0:755"
   ["/usr/local/bin/autobench-session-prep.sh"]="0:0:755"
   ["/usr/local/bin/autobench-launch.sh"]="0:0:755"
+  ["/usr/local/bin/asset-tag.sh"]="0:0:755"
+  ["/usr/local/bin/asset-tag-launch.sh"]="0:0:755"
   ["/root/Desktop/AutoBench.desktop"]="0:0:755"
+  ["/root/Desktop/AssetTag.desktop"]="0:0:755"
   ["/root/Desktop/KeyboardTest.desktop"]="0:0:755"
 )

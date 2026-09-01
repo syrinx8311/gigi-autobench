@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Asset Tag
+Comment=View and blank SMBIOS asset tags
+Exec=/usr/local/bin/asset-tag-launch.sh
+Terminal=false
+Categories=System;
+Icon=drive-harddisk

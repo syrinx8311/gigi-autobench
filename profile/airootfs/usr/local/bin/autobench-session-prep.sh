@@ -78,14 +78,21 @@ if command -v xinput >/dev/null 2>&1; then
     done
 fi
 
-# ------------------------------------------------- trusted launcher + X ----
+# ------------------------------------------- trusted launchers + X ----
 xset s off -dpms 2>/dev/null
 xset s noblank 2>/dev/null
 
-launcher="$HOME/Desktop/AutoBench.desktop"
-chmod +x "$launcher" 2>/dev/null || true
-if command -v gio >/dev/null 2>&1; then
-    gio set "$launcher" metadata::trusted true 2>/dev/null || true
-fi
+CONF_FILE="/usr/local/share/autobench/autobench.conf"
+[ "$(id -u)" = "0" ] && [ -r "$CONF_FILE" ] && . "$CONF_FILE"
+[ "${ASSET_TAG_TOOL:-1}" = "1" ] && ASSET_TAG="AssetTag.desktop" || ASSET_TAG=""
+
+for launcher in \
+    "$HOME/Desktop/AutoBench.desktop" \
+    ${ASSET_TAG:+"$HOME/Desktop/$ASSET_TAG"}; do
+    chmod +x "$launcher" 2>/dev/null || true
+    if command -v gio >/dev/null 2>&1; then
+        gio set "$launcher" metadata::trusted true 2>/dev/null || true
+    fi
+done
 
 exit 0
